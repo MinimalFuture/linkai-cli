@@ -23,7 +23,6 @@ type DeviceAuthResponse struct {
 type DeviceFlowTokenData struct {
 	AccessToken      string
 	RefreshToken     string
-	ClientID         string
 	Scope            string
 	ExpiresIn        int // access token TTL in seconds
 	RefreshExpiresIn int // refresh token TTL in seconds
@@ -67,9 +66,22 @@ func RequestDeviceAuthorization(client *http.Client, apiBase, deviceID, scope st
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("device authorization failed: HTTP %d – response not JSON", resp.StatusCode)
+	}
+
+	if resp.StatusCode >= 400 {
+		msg := getString(raw, "message")
+		if msg == "" {
+			msg = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("device authorization failed: %s", msg)
+	}
+
+	data, err := unwrapEnvelope(raw)
+	if err != nil {
+		return nil, fmt.Errorf("device authorization failed: %w", err)
 	}
 
 	if errStr := getString(data, "error"); errStr != "" {
@@ -78,10 +90,6 @@ func RequestDeviceAuthorization(client *http.Client, apiBase, deviceID, scope st
 			msg = errStr
 		}
 		return nil, fmt.Errorf("device authorization failed: %s", msg)
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("device authorization failed: HTTP %d", resp.StatusCode)
 	}
 
 	expiresIn := getInt(data, "expires_in", 300)
@@ -103,8 +111,7 @@ func RequestDeviceAuthorization(client *http.Client, apiBase, deviceID, scope st
 }
 
 // PollDeviceToken polls POST /api/cli/auth/token until authorization completes or times out.
-// clientID is the per-device secret generated at login start, sent to bind the token to this device.
-func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCode, clientID string, interval, expiresIn int, errOut io.Writer) *DeviceFlowResult {
+func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCode string, interval, expiresIn int, errOut io.Writer) *DeviceFlowResult {
 	if errOut == nil {
 		errOut = io.Discard
 	}
@@ -131,7 +138,6 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 
 		payload, _ := json.Marshal(map[string]string{
 			"device_code": deviceCode,
-			"client_id":   clientID,
 		})
 		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
 		if err != nil {
@@ -154,11 +160,17 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 			continue
 		}
 
-		var data map[string]interface{}
-		if err := json.Unmarshal(body, &data); err != nil {
+		var raw map[string]interface{}
+		if err := json.Unmarshal(body, &raw); err != nil {
 			fmt.Fprintf(errOut, "[linkai] [WARN] device-flow: poll parse error: %v\n", err)
 			currentInterval = minInt(currentInterval+1, maxPollInterval)
 			continue
+		}
+
+		data, err := unwrapEnvelope(raw)
+		if err != nil {
+			fmt.Fprintf(errOut, "[linkai] [WARN] device-flow: poll envelope error: %v\n", err)
+			return &DeviceFlowResult{OK: false, Error: "server_error", Message: err.Error()}
 		}
 
 		errStr := getString(data, "error")
@@ -171,7 +183,6 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 				Token: &DeviceFlowTokenData{
 					AccessToken:      getString(data, "access_token"),
 					RefreshToken:     getString(data, "refresh_token"),
-					ClientID:         clientID,
 					Scope:            getString(data, "scope"),
 					ExpiresIn:        getInt(data, "expires_in", 7200),
 					RefreshExpiresIn: getInt(data, "refresh_expires_in", 7*24*3600),
@@ -218,6 +229,45 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 		fmt.Fprintf(errOut, "[linkai] [WARN] device-flow: max poll attempts reached\n")
 	}
 	return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Authorization timed out, please try again"}
+}
+
+// unwrapEnvelope checks if the raw JSON follows the ResultDTO envelope
+// {"code":200,"msg":"...","data":{...}} and returns the inner data map.
+// If the response is not wrapped, it returns the original map unchanged.
+func unwrapEnvelope(m map[string]interface{}) (map[string]interface{}, error) {
+	dataVal, hasData := m["data"]
+	_, hasCode := m["code"]
+	if !hasCode || !hasData {
+		return m, nil
+	}
+
+	codeVal, _ := m["code"]
+	var code int
+	switch c := codeVal.(type) {
+	case float64:
+		code = int(c)
+	case int:
+		code = c
+	default:
+		return m, nil
+	}
+
+	if code != 200 {
+		msg := getString(m, "message")
+		if msg == "" {
+			msg = fmt.Sprintf("server returned code %d", code)
+		}
+		return nil, fmt.Errorf("API error: %s", msg)
+	}
+
+	switch inner := dataVal.(type) {
+	case map[string]interface{}:
+		return inner, nil
+	case nil:
+		return m, nil
+	default:
+		return m, nil
+	}
 }
 
 // helpers

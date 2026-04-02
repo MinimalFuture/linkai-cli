@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,10 +19,9 @@ const (
 type StoredToken struct {
 	AccessToken      string `json:"access_token"`
 	RefreshToken     string `json:"refresh_token"`
-	ClientID         string `json:"client_id"`            // per-device secret, required for refresh
 	Scope            string `json:"scope"`
-	ExpiresAt        int64  `json:"expires_at"`            // access token expiry, Unix ms
-	RefreshExpiresAt int64  `json:"refresh_expires_at"`    // refresh token expiry, Unix ms
+	ExpiresAt        int64  `json:"expires_at"`           // access token expiry, Unix ms
+	RefreshExpiresAt int64  `json:"refresh_expires_at"`   // refresh token expiry, Unix ms
 	GrantedAt        int64  `json:"granted_at"`
 }
 
@@ -103,16 +100,3 @@ func MaskToken(token string) string {
 	return "****" + token[len(token)-4:]
 }
 
-// generateRandomHex generates n random bytes encoded as hex (2n characters).
-func generateRandomHex(n int) (string, error) {
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-// GenerateClientID creates a new random client ID for device binding.
-func GenerateClientID() (string, error) {
-	return generateRandomHex(32)
-}

@@ -31,7 +31,7 @@ func New(baseURL string, httpClient *http.Client, token string) *Client {
 // Response is the standard LinkAI API envelope.
 type Response struct {
 	Code int             `json:"code"`
-	Msg  string          `json:"msg"`
+	Msg  string          `json:"message"`
 	Data json.RawMessage `json:"data"`
 }
 

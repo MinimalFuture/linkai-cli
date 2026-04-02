@@ -79,12 +79,6 @@ func loginRun(opts *LoginOptions) error {
 		return fmt.Errorf("failed to get device ID: %w", err)
 	}
 
-	// Generate a new client_id for this login session (used to bind refresh token)
-	clientID, err := larkauth.GenerateClientID()
-	if err != nil {
-		return fmt.Errorf("failed to generate client ID: %w", err)
-	}
-
 	scope := opts.Scope
 	if scope == "" {
 		scope = "chat"
@@ -130,7 +124,7 @@ func loginRun(opts *LoginOptions) error {
 	// Step 3: Poll for token
 	log("Waiting for authorization...")
 	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
-		authResp.DeviceCode, clientID, authResp.Interval, authResp.ExpiresIn, f.IOStreams.ErrOut)
+		authResp.DeviceCode, authResp.Interval, authResp.ExpiresIn, f.IOStreams.ErrOut)
 
 	if !result.OK {
 		if opts.JSON {
@@ -153,14 +147,9 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	f := opts.Factory
 	client := f.HttpClient()
 
-	clientID, err := larkauth.GenerateClientID()
-	if err != nil {
-		return fmt.Errorf("failed to generate client ID: %w", err)
-	}
-
 	fmt.Fprintln(f.IOStreams.ErrOut, "Waiting for authorization...")
 	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
-		opts.DeviceCode, clientID, 3, 300, f.IOStreams.ErrOut)
+		opts.DeviceCode, 3, 300, f.IOStreams.ErrOut)
 
 	if !result.OK {
 		return fmt.Errorf("authorization failed: %s", result.Message)
@@ -180,7 +169,6 @@ func saveLoginResult(opts *LoginOptions, cfg *config.Config, token *larkauth.Dev
 	storedToken := &larkauth.StoredToken{
 		AccessToken:      token.AccessToken,
 		RefreshToken:     token.RefreshToken,
-		ClientID:         token.ClientID,
 		Scope:            token.Scope,
 		ExpiresAt:        now + int64(token.ExpiresIn)*1000,
 		RefreshExpiresAt: now + int64(token.RefreshExpiresIn)*1000,
