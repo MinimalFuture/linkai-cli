@@ -54,6 +54,34 @@ linkai auth status --json
 linkai auth logout
 ```
 
+## 命令参考
+
+### app — 应用管理
+
+```bash
+# 列出当前账户下的应用（默认表格，第 1 页 20 条）
+linkai app list
+
+# 关键词搜索
+linkai app list --key "客服"
+
+# 翻页
+linkai app list --page 2 --page-size 10
+
+# JSON 输出（适合脚本/管道）
+linkai app list --json
+```
+
+输出示例：
+
+```
+CODE          NAME            TYPE   DESCRIPTION
+abc123        智能客服助手      APP    负责处理用户售后咨询...
+def456        代码审查机器人    APP    自动审查 PR 并给出建...
+
+Showing 1-2 of 2
+```
+
 ## 权限（Scope）
 
 登录时可通过 `--scope` 指定请求的权限范围。权限精确到每个资源的操作级别。

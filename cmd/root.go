@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	appCmd "github.com/yjr/linkai-cli/cmd/app"
 	authCmd "github.com/yjr/linkai-cli/cmd/auth"
 	larkauth "github.com/yjr/linkai-cli/internal/auth"
 	"github.com/yjr/linkai-cli/internal/cmdutil"
@@ -40,6 +41,7 @@ func Execute() int {
 		return cmdutil.CheckScope(token, requiredScope)
 	}
 
+	rootCmd.AddCommand(appCmd.NewCmdApp(f))
 	rootCmd.AddCommand(authCmd.NewCmdAuth(f))
 
 	if err := rootCmd.Execute(); err != nil {

@@ -20,7 +20,7 @@ go mod tidy
 
 ## Architecture
 
-This is a Go CLI for the LinkAI platform, modeled after `reference/cli/` (lark-cli). The `reference/` directory contains read-only reference implementations — do not modify them except when intentionally adding backend interfaces to `reference/ai-chat-service/`.
+This is a Go CLI for the LinkAI platform, modeled after `reference/cli/` (lark-cli). The `reference/` directory contains read-only reference implementations — do not modify them.
 
 ### Package layout
 
@@ -28,6 +28,7 @@ This is a Go CLI for the LinkAI platform, modeled after `reference/cli/` (lark-c
 main.go                           → calls cmd.Execute(), returns exit code
 cmd/root.go                       → root cobra command, PersistentPreRunE scope check, registers subcommands
 cmd/auth/                         → auth subcommands (login/logout/status)
+cmd/app/                          → app subcommands (list)
 internal/auth/device_flow.go      → Device Flow HTTP calls (opaque token, no AppID/AppSecret)
 internal/auth/token_store.go      → StoredToken persisted at ~/.linkai-cli/token.json
 internal/api/client.go            → unified HTTP client (auth header, X-Device-ID, error unwrapping)
@@ -82,7 +83,7 @@ cmd.Annotations = map[string]string{cmdutil.RequiredScopeKey: "app:write"}
 
 Obtain via `f.APIClient()` in command RunE functions.
 
-### Backend interfaces (reference/ai-chat-service)
+### Backend API endpoints
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
@@ -91,21 +92,22 @@ Obtain via `f.APIClient()` in command RunE functions.
 | POST | `/api/cli/auth/authorize` | user token | called by web page after user approves (sends granted_scope) |
 | POST | `/api/cli/auth/refresh` | client_id + X-Device-ID | refresh access token |
 | POST | `/api/cli/auth/revoke` | access token | logout / revoke tokens |
+| GET | `/api/cli/app/list` | CLI token | list apps for current user; params: `key`, `type[]`, `pageNo`, `pageSize` |
 
 Redis keys: `cli_device_auth:{device_code}`, `cli_access:{token}` (2h TTL), `cli_refresh:{token}` (7d TTL).
 Tokens are bound to `device_id` and `client_id` server-side; mismatched device returns 401.
 
-CLI token interceptor: `CliTokenInterceptor.java` handles `/api/cli/**` (excludes public auth endpoints).
-
 ### Adding new commands
 
-Follow the pattern in `cmd/auth/`:
+Follow the pattern in `cmd/auth/` or `cmd/app/`:
 - Define an `Options` struct with a `Factory` field
 - `NewCmdXxx(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command` — `runF` allows test injection
 - Register in `cmd/root.go` via `rootCmd.AddCommand(...)`
 - Declare required scope: `cmd.Annotations = map[string]string{cmdutil.RequiredScopeKey: "resource:action"}`
 - Use `f.APIClient()` for authenticated requests, `f.IOStreams` for output
 - Use `output.PrintJSON` / `output.PrintTable` for formatted output
+- For list commands with pagination: use `--page` / `--page-size` flags (maps to backend `pageNo`/`pageSize`)
+- Truncate displayed strings by **rune count**, not byte length: `[]rune(s)[:n]` to avoid corrupting CJK/emoji
 
 ### Config & token files
 
