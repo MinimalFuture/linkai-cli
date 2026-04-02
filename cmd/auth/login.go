@@ -92,7 +92,7 @@ func loginRun(opts *LoginOptions) error {
 
 	// Step 1: Request device authorization
 	client := f.HttpClient()
-	authResp, err := larkauth.RequestDeviceAuthorization(client, cfg.APIBase, deviceID, scope)
+	authResp, err := larkauth.RequestDeviceAuthorization(client, cfg.APIBase(), deviceID, scope)
 	if err != nil {
 		return fmt.Errorf("device authorization failed: %w", err)
 	}
@@ -129,7 +129,7 @@ func loginRun(opts *LoginOptions) error {
 
 	// Step 3: Poll for token
 	log("Waiting for authorization...")
-	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase,
+	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
 		authResp.DeviceCode, clientID, authResp.Interval, authResp.ExpiresIn, f.IOStreams.ErrOut)
 
 	if !result.OK {
@@ -159,7 +159,7 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	}
 
 	fmt.Fprintln(f.IOStreams.ErrOut, "Waiting for authorization...")
-	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase,
+	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
 		opts.DeviceCode, clientID, 3, 300, f.IOStreams.ErrOut)
 
 	if !result.OK {

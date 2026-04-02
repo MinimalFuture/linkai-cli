@@ -12,7 +12,7 @@ import (
 
 const (
 	DefaultAPIBase = "https://link-ai.tech"
-	configDirName  = ".linkai-cli"
+	configDirName  = ".linkai"
 	configFileName = "config.json"
 )
 
@@ -23,14 +23,23 @@ type AppUser struct {
 	AccountNo string `json:"account_no,omitempty"`
 }
 
-// Config is the CLI configuration stored in ~/.linkai-cli/config.json.
+// Config is the CLI configuration stored in ~/.linkai/config.json.
 type Config struct {
-	APIBase  string   `json:"api_base"`
 	DeviceID string   `json:"device_id,omitempty"`
 	User     *AppUser `json:"user,omitempty"`
+	apiBase  string   // runtime only, not persisted
 }
 
-// ConfigDir returns the path to the config directory (~/.linkai-cli/).
+// APIBase returns the effective API base URL:
+// LINKAI_API_BASE env var takes precedence, then DefaultAPIBase.
+func (c *Config) APIBase() string {
+	if c.apiBase != "" {
+		return c.apiBase
+	}
+	return DefaultAPIBase
+}
+
+// ConfigDir returns the path to the config directory (~/.linkai/).
 func ConfigDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -48,33 +57,34 @@ func configPath() (string, error) {
 }
 
 // Load reads the config file from disk. Returns a default config if the file doesn't exist.
+// The API base is resolved from LINKAI_API_BASE env var at runtime and never persisted.
 func Load() (*Config, error) {
 	p, err := configPath()
 	if err != nil {
 		return nil, err
 	}
+
+	cfg := &Config{}
 	data, err := os.ReadFile(p)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return &Config{APIBase: DefaultAPIBase}, nil
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read config: %w", err)
 		}
-		return nil, fmt.Errorf("failed to read config: %w", err)
+	} else {
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("failed to parse config: %w", err)
+		}
 	}
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-	if cfg.APIBase == "" {
-		cfg.APIBase = DefaultAPIBase
-	}
-	// LINKAI_API_BASE env var overrides config file (useful for local/test env)
+
+	// Resolve API base from env var at runtime (not stored on disk)
 	if base := os.Getenv("LINKAI_API_BASE"); base != "" {
-		cfg.APIBase = strings.TrimRight(base, "/")
+		cfg.apiBase = strings.TrimRight(base, "/")
 	}
-	return &cfg, nil
+
+	return cfg, nil
 }
 
-// Save writes the config file to disk.
+// Save writes the config file to disk (device_id and user only; api_base is never persisted).
 func Save(cfg *Config) error {
 	p, err := configPath()
 	if err != nil {

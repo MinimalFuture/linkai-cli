@@ -46,7 +46,7 @@ func statusRun(opts *StatusOptions) error {
 	}
 
 	result := map[string]interface{}{
-		"api_base": cfg.APIBase,
+		"api_base": cfg.APIBase(),
 	}
 
 	if cfg.User == nil {

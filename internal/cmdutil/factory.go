@@ -76,7 +76,7 @@ func NewDefault() *Factory {
 		if larkauth.TokenStatus(token) == "expired" {
 			return nil, fmt.Errorf("token has expired: run 'linkai auth login'")
 		}
-		cachedAPIClient = api.New(cfg.APIBase, f.HttpClient(), token.AccessToken)
+		cachedAPIClient = api.New(cfg.APIBase(), f.HttpClient(), token.AccessToken)
 		return cachedAPIClient, nil
 	}
 
