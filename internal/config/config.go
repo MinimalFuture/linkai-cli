@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
-	DefaultAPIBase = "https://api.link-ai.tech"
+	DefaultAPIBase = "https://link-ai.tech"
 	configDirName  = ".linkai-cli"
 	configFileName = "config.json"
 )
@@ -65,6 +66,10 @@ func Load() (*Config, error) {
 	}
 	if cfg.APIBase == "" {
 		cfg.APIBase = DefaultAPIBase
+	}
+	// LINKAI_API_BASE env var overrides config file (useful for local/test env)
+	if base := os.Getenv("LINKAI_API_BASE"); base != "" {
+		cfg.APIBase = strings.TrimRight(base, "/")
 	}
 	return &cfg, nil
 }
