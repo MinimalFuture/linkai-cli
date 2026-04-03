@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	larkauth "github.com/yjr/linkai-cli/internal/auth"
+	"github.com/yjr/linkai-cli/internal/auth"
 	"github.com/yjr/linkai-cli/internal/cmdutil"
 	"github.com/yjr/linkai-cli/internal/config"
 )
@@ -86,7 +86,7 @@ func loginRun(opts *LoginOptions) error {
 
 	// Step 1: Request device authorization
 	client := f.HttpClient()
-	authResp, err := larkauth.RequestDeviceAuthorization(client, cfg.APIBase(), deviceID, scope)
+	authResp, err := auth.RequestDeviceAuthorization(client, cfg.APIBase(), deviceID, scope)
 	if err != nil {
 		return fmt.Errorf("device authorization failed: %w", err)
 	}
@@ -123,7 +123,7 @@ func loginRun(opts *LoginOptions) error {
 
 	// Step 3: Poll for token
 	log("Waiting for authorization...")
-	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
+	result := auth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
 		authResp.DeviceCode, authResp.Interval, authResp.ExpiresIn, f.IOStreams.ErrOut)
 
 	if !result.OK {
@@ -148,7 +148,7 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	client := f.HttpClient()
 
 	fmt.Fprintln(f.IOStreams.ErrOut, "Waiting for authorization...")
-	result := larkauth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
+	result := auth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
 		opts.DeviceCode, 3, 300, f.IOStreams.ErrOut)
 
 	if !result.OK {
@@ -162,11 +162,11 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 }
 
 // saveLoginResult stores the token and user info after successful authorization.
-func saveLoginResult(opts *LoginOptions, cfg *config.Config, token *larkauth.DeviceFlowTokenData) error {
+func saveLoginResult(opts *LoginOptions, cfg *config.Config, token *auth.DeviceFlowTokenData) error {
 	f := opts.Factory
 
 	now := time.Now().UnixMilli()
-	storedToken := &larkauth.StoredToken{
+	storedToken := &auth.StoredToken{
 		AccessToken:      token.AccessToken,
 		RefreshToken:     token.RefreshToken,
 		Scope:            token.Scope,
@@ -174,42 +174,30 @@ func saveLoginResult(opts *LoginOptions, cfg *config.Config, token *larkauth.Dev
 		RefreshExpiresAt: now + int64(token.RefreshExpiresIn)*1000,
 		GrantedAt:        now,
 	}
-	if err := larkauth.SetStoredToken(storedToken); err != nil {
+	if err := auth.SetStoredToken(storedToken); err != nil {
 		return fmt.Errorf("failed to save token: %w", err)
 	}
 
 	cfg.User = &config.AppUser{
-		UserID:    token.UserID,
-		UserName:  token.UserName,
-		AccountNo: token.AccountNo,
+		UserName: token.UserName,
 	}
 	if err := config.Save(cfg); err != nil {
 		// Rollback: remove the token we just wrote to avoid split-brain state
-		_ = larkauth.RemoveStoredToken()
+		_ = auth.RemoveStoredToken()
 		return fmt.Errorf("failed to save config: %w", err)
-	}
-
-	name := token.UserName
-	if name == "" {
-		name = token.AccountNo
-	}
-	if name == "" {
-		name = token.UserID
 	}
 
 	if opts.JSON {
 		data := map[string]interface{}{
-			"event":      "authorization_complete",
-			"user_id":    token.UserID,
-			"user_name":  token.UserName,
-			"account_no": token.AccountNo,
-			"scope":      token.Scope,
+			"event":     "authorization_complete",
+			"user_name": token.UserName,
+			"scope":     token.Scope,
 		}
 		enc := json.NewEncoder(f.IOStreams.Out)
 		enc.SetEscapeHTML(false)
 		return enc.Encode(data)
 	}
 
-	fmt.Fprintf(f.IOStreams.ErrOut, "\n✓ Logged in as %s\n", name)
+	fmt.Fprintf(f.IOStreams.ErrOut, "\n✓ Logged in as %s\n", token.UserName)
 	return nil
 }

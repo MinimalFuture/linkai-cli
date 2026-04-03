@@ -18,9 +18,7 @@ const (
 
 // AppUser is a logged-in user record stored in config.
 type AppUser struct {
-	UserID    string `json:"user_id"`
-	UserName  string `json:"user_name"`
-	AccountNo string `json:"account_no,omitempty"`
+	UserName string `json:"user_name"`
 }
 
 // Config is the CLI configuration stored in ~/.linkai/config.json.

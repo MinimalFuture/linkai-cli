@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	larkauth "github.com/yjr/linkai-cli/internal/auth"
+	"github.com/yjr/linkai-cli/internal/auth"
 	"github.com/yjr/linkai-cli/internal/cmdutil"
 	"github.com/yjr/linkai-cli/internal/config"
 )
@@ -44,7 +44,7 @@ func logoutRun(opts *LogoutOptions) error {
 		return nil
 	}
 
-	if err := larkauth.RemoveStoredToken(); err != nil {
+	if err := auth.RemoveStoredToken(); err != nil {
 		return fmt.Errorf("failed to remove token: %w", err)
 	}
 

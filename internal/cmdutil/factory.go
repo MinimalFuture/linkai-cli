@@ -9,7 +9,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/yjr/linkai-cli/internal/api"
-	larkauth "github.com/yjr/linkai-cli/internal/auth"
+	"github.com/yjr/linkai-cli/internal/auth"
 	"github.com/yjr/linkai-cli/internal/config"
 )
 
@@ -27,10 +27,11 @@ func NewDefault() *Factory {
 	f := &Factory{}
 
 	f.IOStreams = &IOStreams{
-		In:         os.Stdin,
-		Out:        os.Stdout,
-		ErrOut:     os.Stderr,
-		IsTerminal: term.IsTerminal(int(os.Stdout.Fd())),
+		In:              os.Stdin,
+		Out:             os.Stdout,
+		ErrOut:          os.Stderr,
+		IsTerminal:      term.IsTerminal(int(os.Stdout.Fd())),
+		IsStdinTerminal: term.IsTerminal(int(os.Stdin.Fd())),
 	}
 
 	var cachedConfig *config.Config
@@ -69,11 +70,11 @@ func NewDefault() *Factory {
 		if err != nil {
 			return nil, err
 		}
-		token := larkauth.GetStoredToken()
+		token := auth.GetStoredToken()
 		if token == nil {
 			return nil, ErrNotLoggedIn
 		}
-		if larkauth.TokenStatus(token) == "expired" {
+		if auth.TokenStatus(token) == "expired" {
 			return nil, fmt.Errorf("token has expired: run 'linkai auth login'")
 		}
 		cachedAPIClient = api.New(cfg.APIBase(), f.HttpClient(), token.AccessToken)

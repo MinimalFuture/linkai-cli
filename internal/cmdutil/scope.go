@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	larkauth "github.com/yjr/linkai-cli/internal/auth"
+	"github.com/yjr/linkai-cli/internal/auth"
 )
 
 // RequiredScopeKey is the cobra command annotation key for declaring required scope.
@@ -25,7 +25,7 @@ func HasScope(tokenScope, required string) bool {
 
 // CheckScope verifies that token carries the required scope.
 // Returns a descriptive error with a remediation hint when the check fails.
-func CheckScope(token *larkauth.StoredToken, required string) error {
+func CheckScope(token *auth.StoredToken, required string) error {
 	if token == nil {
 		return fmt.Errorf("not logged in: run 'linkai auth login'")
 	}

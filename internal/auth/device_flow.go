@@ -26,9 +26,7 @@ type DeviceFlowTokenData struct {
 	Scope            string
 	ExpiresIn        int // access token TTL in seconds
 	RefreshExpiresIn int // refresh token TTL in seconds
-	UserID           string
 	UserName         string
-	AccountNo        string
 }
 
 // DeviceFlowResult is the result of polling the token endpoint.
@@ -186,9 +184,7 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 					Scope:            getString(data, "scope"),
 					ExpiresIn:        getInt(data, "expires_in", 7200),
 					RefreshExpiresIn: getInt(data, "refresh_expires_in", 7*24*3600),
-					UserID:           getString(data, "user_id"),
 					UserName:         getString(data, "user_name"),
-					AccountNo:        getString(data, "account_no"),
 				},
 			}
 		}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	larkauth "github.com/yjr/linkai-cli/internal/auth"
+	"github.com/yjr/linkai-cli/internal/auth"
 	"github.com/yjr/linkai-cli/internal/cmdutil"
 )
 
@@ -55,11 +55,9 @@ func statusRun(opts *StatusOptions) error {
 		return printStatus(f, opts.JSON, result)
 	}
 
-	result["user_id"] = cfg.User.UserID
 	result["user_name"] = cfg.User.UserName
-	result["account_no"] = cfg.User.AccountNo
 
-	stored := larkauth.GetStoredToken()
+	stored := auth.GetStoredToken()
 	if stored == nil {
 		result["logged_in"] = false
 		result["token_status"] = "missing"
@@ -67,7 +65,7 @@ func statusRun(opts *StatusOptions) error {
 		return printStatus(f, opts.JSON, result)
 	}
 
-	status := larkauth.TokenStatus(stored)
+	status := auth.TokenStatus(stored)
 	result["token_status"] = status
 	result["granted_at"] = time.UnixMilli(stored.GrantedAt).Format(time.RFC3339)
 	result["expires_at"] = time.UnixMilli(stored.ExpiresAt).Format(time.RFC3339)
@@ -108,11 +106,7 @@ func printStatus(f *cmdutil.Factory, asJSON bool, result map[string]interface{})
 	}
 
 	name, _ := result["user_name"].(string)
-	account, _ := result["account_no"].(string)
-	if name == "" {
-		name = account
-	}
-	fmt.Fprintf(f.IOStreams.Out, "Logged in as %s (%s)\n", name, account)
+	fmt.Fprintf(f.IOStreams.Out, "Logged in as %s\n", name)
 	fmt.Fprintf(f.IOStreams.Out, "API:               %s\n", result["api_base"])
 
 	if scope, ok := result["scope"].(string); ok && scope != "" {
