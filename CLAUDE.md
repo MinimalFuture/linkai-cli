@@ -30,6 +30,12 @@ cmd/root.go                       → root cobra command, PersistentPreRunE scop
 cmd/auth/                         → auth subcommands (login/logout/status)
 cmd/app/                          → app subcommands (list)
 cmd/account/                      → account subcommands (info)
+cmd/knowledge/                    → knowledge subcommands (list/create/delete/files/search)
+cmd/model/                        → model subcommands (list)
+cmd/database/                     → database subcommands (list/tables/describe/exec)
+cmd/image/                        → image subcommands (gen)
+cmd/video/                        → video subcommands (gen — with built-in polling)
+cmd/audio/                        → audio subcommands (speech — TTS with optional --output download)
 internal/auth/device_flow.go      → Device Flow HTTP calls (opaque token, no AppID/AppSecret)
 internal/auth/token_store.go      → StoredToken persisted at ~/.linkai/token.json
 internal/api/client.go            → unified HTTP client (auth header, X-Device-ID, error unwrapping)
@@ -66,6 +72,21 @@ Default scope on login: `app:read chat:read user:read workflow:read knowledge:re
 
 Write/delete scopes require explicit authorization via `--scope` flag or re-login.
 
+Full scope list:
+
+| Scope | Commands |
+|-------|---------|
+| `app:read` | `app list` |
+| `user:read` | `account info` |
+| `knowledge:read` | `knowledge list/files/search` |
+| `knowledge:write` | `knowledge create` |
+| `knowledge:delete` | `knowledge delete` |
+| `db:read` | `database list/tables/describe/exec` (SELECT) |
+| `db:write` | `database exec` (INSERT/UPDATE/DELETE) — checked server-side |
+| `image:write` | `image gen` |
+| `video:write` | `video gen` |
+| `audio:write` | `audio speech` |
+
 Commands declare their required scope via a Cobra annotation:
 ```go
 cmd.Annotations = map[string]string{cmdutil.RequiredScopeKey: "app:write"}
@@ -92,15 +113,28 @@ Obtain via `f.APIClient()` in command RunE functions.
 | POST | `/api/cli/auth/authorize` | user token | called by web page after user approves (sends granted_scope) |
 | POST | `/api/cli/auth/refresh` | X-Device-ID | refresh access token |
 | POST | `/api/cli/auth/revoke` | access token | logout / revoke tokens |
-| GET | `/api/cli/app/list` | CLI token | list apps for current user; params: `key`, `type[]`, `pageNo`, `pageSize` |
+| GET | `/api/cli/app/list` | CLI token | list apps; params: `key`, `type[]`, `pageNo`, `pageSize` |
 | GET | `/api/cli/account/info` | CLI token | current user's name, credits, plan version |
+| GET | `/api/cli/knowledge/list` | CLI token | list knowledge bases |
+| POST | `/api/cli/knowledge/create` | CLI token | create knowledge base |
+| POST | `/api/cli/knowledge/delete` | CLI token | delete knowledge base |
+| GET | `/api/cli/knowledge/files` | CLI token | list files in a knowledge base |
+| POST | `/api/cli/knowledge/search` | CLI token | vector search |
+| GET | `/api/cli/database/list` | CLI token | list database connections; params: `page`, `page_size` |
+| GET | `/api/cli/database/tables` | CLI token | list tables; param: `code` |
+| GET | `/api/cli/database/describe` | CLI token | table structure; params: `code`, `table` |
+| POST | `/api/cli/database/exec` | CLI token | execute SQL; body: `{code, sql}` |
+| POST | `/api/cli/image/gen` | CLI token | generate image; body: `{prompt, model?, size?, aspect_ratio?}` |
+| POST | `/api/cli/video/gen` | CLI token | create video task; body: `{prompt, model?, duration?, aspect_ratio?, mode?}` |
+| POST | `/api/cli/video/status` | CLI token | query video task; body: `{task_id, model?, duration?, mode?}` |
+| POST | `/api/cli/audio/speech` | CLI token | TTS; body: `{text, model?, voice?}` → returns `{url}` |
 
 Redis keys: `cli_device_auth:{device_code}`, `cli_access:{token}` (2h TTL), `cli_refresh:{token}` (7d TTL).
 Tokens are bound to `device_id` server-side; mismatched device returns 401.
 
 ### Adding new commands
 
-Follow the pattern in `cmd/auth/` or `cmd/app/`:
+Follow the pattern in `cmd/database/` or `cmd/image/`:
 - Define an `Options` struct with a `Factory` field
 - `NewCmdXxx(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command` — `runF` allows test injection
 - Register in `cmd/root.go` via `rootCmd.AddCommand(...)`
@@ -109,6 +143,8 @@ Follow the pattern in `cmd/auth/` or `cmd/app/`:
 - Use `output.PrintJSON` / `output.PrintTable` for formatted output
 - For list commands with pagination: use `--page` / `--page-size` flags (maps to backend `pageNo`/`pageSize`)
 - Truncate displayed strings by **rune count**, not byte length: `[]rune(s)[:n]` to avoid corrupting CJK/emoji
+- For async tasks (e.g. video): poll with `time.Sleep` + context check; print progress to `f.IOStreams.ErrOut`
+- For binary downloads (e.g. audio `--output`): use `net/http` GET directly on the CDN URL, no API client needed
 
 ### Config & token files
 

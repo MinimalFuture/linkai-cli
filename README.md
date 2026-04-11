@@ -1,6 +1,6 @@
 # linkai-cli
 
-LinkAI 平台的官方命令行工具，让你在终端中管理应用、发起对话、操作工作流。
+LinkAI 平台的官方命令行工具，让你在终端中管理应用、知识库、数据库，生成图片/视频/语音。
 
 ## 安装
 
@@ -54,92 +54,149 @@ linkai auth status --json
 linkai auth logout
 ```
 
+---
+
 ## 命令参考
+
+### auth — 认证
+
+```bash
+linkai auth login                          # 登录（Device Flow）
+linkai auth login --scope "db:read db:write image:write video:write audio:write"
+linkai auth logout                         # 登出
+linkai auth status                         # 查看当前登录状态
+```
+
+### account — 账户
+
+```bash
+linkai account info                        # 查看用户名、积分、版本
+linkai account info --json
+```
 
 ### app — 应用管理
 
 ```bash
-# 列出当前账户下的应用（默认表格，第 1 页 20 条）
-linkai app list
-
-# 关键词搜索
-linkai app list --key "客服"
-
-# 翻页
-linkai app list --page 2 --page-size 10
-
-# JSON 输出（适合脚本/管道）
-linkai app list --json
+linkai app list                            # 列出应用（表格）
+linkai app list --key "客服" --page 2      # 关键词搜索 + 翻页
+linkai app list --json                     # JSON 输出
 ```
 
-输出示例：
+### knowledge — 知识库
 
+```bash
+linkai knowledge list                      # 列出知识库
+linkai knowledge create --name "产品文档"  # 创建知识库
+linkai knowledge delete <code>             # 删除知识库
+linkai knowledge files <code>             # 列出知识库文件
+linkai knowledge search <code> <query>    # 向量搜索
 ```
-CODE          NAME            TYPE   DESCRIPTION
-abc123        智能客服助手      APP    负责处理用户售后咨询...
-def456        代码审查机器人    APP    自动审查 PR 并给出建...
 
-Showing 1-2 of 2
+### database — 数据库（需要 `db:read` scope）
+
+```bash
+linkai database list                       # 列出数据库连接
+linkai database tables <code>              # 列出指定库的所有表
+linkai database describe <code> <table>    # 查看表结构
+linkai database exec <code> "SELECT ..."   # 执行 SQL（SELECT 需 db:read，写操作需 db:write）
 ```
+
+### model — 模型
+
+```bash
+linkai model list                          # 列出可用模型
+linkai model list --json
+```
+
+### image — 图片生成（需要 `image:write` scope）
+
+```bash
+linkai image gen "a cat on the moon"
+linkai image gen "日落风景" --model dall-e-3 --size 1024x1024
+linkai image gen "portrait" --aspect-ratio 9:16 --json
+```
+
+输出图片 CDN URL，可直接在浏览器中打开。
+
+### video — 视频生成（需要 `video:write` scope）
+
+```bash
+linkai video gen "ocean waves at sunset"
+linkai video gen "城市夜景延时" --duration 10 --aspect-ratio 16:9 --mode pro
+linkai video gen "a flying bird" --model jimeng_t2v_v30 --json
+```
+
+CLI 自动轮询等待生成完成（约 30s–3min），完成后输出视频 URL。
+
+### audio — 语音合成（需要 `audio:write` scope）
+
+```bash
+linkai audio speech "Hello, welcome to LinkAI"
+linkai audio speech "你好，欢迎使用 LinkAI" --output hello.mp3   # 下载到本地
+linkai audio speech "Test" --model tts-1-hd --voice alloy --json
+```
+
+---
 
 ## 权限（Scope）
 
-登录时可通过 `--scope` 指定请求的权限范围。权限精确到每个资源的操作级别。
+登录时通过 `--scope` 指定权限范围，权限精确到每个资源的操作级别。
 
 | Scope | 说明 | 默认授予 |
 |-------|------|---------|
 | `app:read` | 查询应用列表、详情 | ✅ |
-| `app:write` | 创建/更新应用 | ❌ |
-| `app:delete` | 删除应用 | ❌ |
 | `chat:read` | 查询对话记录 | ✅ |
-| `chat:write` | 发起对话 | ❌ |
 | `user:read` | 查询用户信息 | ✅ |
 | `workflow:read` | 查询工作流 | ✅ |
-| `workflow:write` | 创建/更新/执行工作流 | ❌ |
-| `workflow:delete` | 删除工作流 | ❌ |
-| `knowledge:read` | 查询知识库数据 | ✅ |
-| `knowledge:write` | 添加/编辑知识库数据 | ❌ |
-| `knowledge:delete` | 删除知识库数据 | ❌ |
+| `knowledge:read` | 查询知识库 | ✅ |
+| `knowledge:write` | 创建/编辑知识库 | ❌ |
+| `knowledge:delete` | 删除知识库 | ❌ |
+| `db:read` | 查询数据库/表/执行 SELECT | ❌ |
+| `db:write` | 执行写操作（INSERT/UPDATE/DELETE） | ❌ |
+| `image:write` | 生成图片 | ❌ |
+| `video:write` | 生成视频 | ❌ |
+| `audio:write` | 语音合成（TTS） | ❌ |
 
-默认登录只获取所有只读权限。需要写权限时重新授权：
+需要额外权限时重新授权：
 
 ```bash
-linkai auth login --scope "app:read app:write"
+# 数据库读写
+linkai auth login --scope "db:read db:write"
+
+# 内容生成
+linkai auth login --scope "image:write video:write audio:write"
+
+# 一次性获取所有权限
+linkai auth login --scope "app:read chat:read user:read workflow:read knowledge:read knowledge:write knowledge:delete db:read db:write image:write video:write audio:write"
 ```
 
-授权页面会展示所请求的权限，用户可在页面上选择实际授予的权限范围。
+---
 
 ## 安全设计
 
-- **Opaque Token**：服务端存储，可随时撤销，有别于 JWT 自包含令牌
-- **双 Token**：access_token 有效期 2 小时，refresh_token 有效期 7 天
-- **设备绑定**：每台机器生成唯一 `device_id` 存于 `~/.linkai-cli/config.json`，所有请求携带 `X-Device-ID` 头。服务端将 token 与 device_id 绑定，token 被盗后在其他机器上无法使用
-- **client_id**：每次登录生成的随机密钥，用于绑定 refresh token，存于 `~/.linkai-cli/token.json`
+- **Opaque Token**：服务端存储，可随时撤销
+- **双 Token**：`access_token` 有效期 2 小时，`refresh_token` 有效期 7 天
+- **设备绑定**：每台机器生成唯一 `device_id`，所有请求携带 `X-Device-ID` 头，服务端将 token 与 device_id 绑定
 
 ## 本地文件
 
 ```
-~/.linkai-cli/
-├── config.json   # API 地址、device_id、已登录用户信息
-└── token.json    # access_token、refresh_token、client_id、scope、过期时间
+~/.linkai/
+├── config.json   # device_id、已登录用户信息
+└── token.json    # access_token、refresh_token、scope、过期时间
 ```
 
 ## 开发
 
 ```bash
-# 构建
-go build -o linkai .
-
-# 验证所有包可编译
-go build ./...
-
-# 整理依赖
-go mod tidy
+go build -o linkai .     # 构建
+go build ./...           # 验证所有包可编译
+go mod tidy              # 整理依赖
 ```
 
 ### 添加新命令
 
-参考 `cmd/auth/` 的结构：
+参考 `cmd/database/` 或 `cmd/image/` 的结构：
 
 ```go
 func NewCmdXxx(f *cmdutil.Factory, runF func(*XxxOptions) error) *cobra.Command {
