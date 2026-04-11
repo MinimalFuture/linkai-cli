@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yjr/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/auth"
 )
 
 // RequiredScopeKey is the cobra command annotation key for declaring required scope.

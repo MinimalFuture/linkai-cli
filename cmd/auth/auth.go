@@ -3,7 +3,7 @@ package auth
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 )
 
 // NewCmdAuth creates the auth command with subcommands.

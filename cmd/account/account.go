@@ -3,7 +3,7 @@ package account
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 )
 
 // NewCmdAccount creates the account command with subcommands.

@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/yjr/linkai-cli/internal/api"
-	"github.com/yjr/linkai-cli/internal/auth"
-	"github.com/yjr/linkai-cli/internal/config"
+	"github.com/MinimalFuture/linkai-cli/internal/api"
+	"github.com/MinimalFuture/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/config"
 )
 
 // ErrNotLoggedIn is returned by APIClient when no valid token is found.
@@ -55,7 +55,7 @@ func NewDefault() *Factory {
 		return &http.Client{
 			Timeout: 30 * time.Second,
 			Transport: &deviceIDTransport{
-				base:     http.DefaultTransport,
+				base:     newRetryTransport(http.DefaultTransport, 3),
 				deviceID: deviceID,
 			},
 		}
@@ -74,9 +74,31 @@ func NewDefault() *Factory {
 		if token == nil {
 			return nil, ErrNotLoggedIn
 		}
-		if auth.TokenStatus(token) == "expired" {
+
+		switch auth.TokenStatus(token) {
+		case "expired":
 			return nil, fmt.Errorf("token has expired: run 'linkai auth login'")
+
+		case "needs_refresh":
+			refreshed, err := auth.RefreshAccessToken(f.HttpClient(), cfg.APIBase(), token.RefreshToken)
+			if err != nil {
+				// Refresh failed — the current access token may still work for
+				// a few more minutes, so fall through with it.
+				fmt.Fprintf(f.IOStreams.ErrOut, "[linkai] [WARN] token refresh failed: %v\n", err)
+			} else {
+				now := time.Now().UnixMilli()
+				token.AccessToken = refreshed.AccessToken
+				token.ExpiresAt = now + int64(refreshed.ExpiresIn)*1000
+				if refreshed.RefreshToken != "" {
+					token.RefreshToken = refreshed.RefreshToken
+					token.RefreshExpiresAt = now + int64(refreshed.RefreshExpiresIn)*1000
+				}
+				if writeErr := auth.SetStoredToken(token); writeErr != nil {
+					fmt.Fprintf(f.IOStreams.ErrOut, "[linkai] [WARN] failed to persist refreshed token: %v\n", writeErr)
+				}
+			}
 		}
+
 		cachedAPIClient = api.New(cfg.APIBase(), f.HttpClient(), token.AccessToken)
 		return cachedAPIClient, nil
 	}

@@ -8,14 +8,15 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
-	"github.com/yjr/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 type SpeechOptions struct {
 	Factory *cmdutil.Factory
 	Ctx     context.Context
 	JSON    bool
+	DryRun  bool
 	Text    string
 	Model   string
 	Voice   string
@@ -47,6 +48,7 @@ func NewCmdAudioSpeech(f *cmdutil.Factory, runF func(*SpeechOptions) error) *cob
 	}
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 	cmd.Flags().StringVar(&opts.Model, "model", "tts-1", "TTS model (tts-1 or tts-1-hd)")
 	cmd.Flags().StringVar(&opts.Voice, "voice", "", "voice type ID")
 	cmd.Flags().StringVar(&opts.Output, "output", "", "save audio to local file (e.g. speech.mp3)")
@@ -66,6 +68,14 @@ func speechRun(opts *SpeechOptions) error {
 	}
 	if opts.Voice != "" {
 		body["voice"] = opts.Voice
+	}
+
+	if opts.DryRun {
+		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
+			Method: "POST",
+			URL:    "/api/cli/audio/speech",
+			Body:   body,
+		})
 	}
 
 	fmt.Fprintln(opts.Factory.IOStreams.ErrOut, "Generating speech...")

@@ -2,21 +2,25 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
-	accountCmd  "github.com/yjr/linkai-cli/cmd/account"
-	appCmd      "github.com/yjr/linkai-cli/cmd/app"
-	audioCmd    "github.com/yjr/linkai-cli/cmd/audio"
-	authCmd     "github.com/yjr/linkai-cli/cmd/auth"
-	databaseCmd "github.com/yjr/linkai-cli/cmd/database"
-	imageCmd    "github.com/yjr/linkai-cli/cmd/image"
-	knowledgeCmd "github.com/yjr/linkai-cli/cmd/knowledge"
-	modelCmd    "github.com/yjr/linkai-cli/cmd/model"
-	videoCmd    "github.com/yjr/linkai-cli/cmd/video"
-	"github.com/yjr/linkai-cli/internal/auth"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
+	accountCmd  "github.com/MinimalFuture/linkai-cli/cmd/account"
+	appCmd      "github.com/MinimalFuture/linkai-cli/cmd/app"
+	audioCmd    "github.com/MinimalFuture/linkai-cli/cmd/audio"
+	authCmd     "github.com/MinimalFuture/linkai-cli/cmd/auth"
+	chatCmd     "github.com/MinimalFuture/linkai-cli/cmd/chat"
+	databaseCmd "github.com/MinimalFuture/linkai-cli/cmd/database"
+	imageCmd    "github.com/MinimalFuture/linkai-cli/cmd/image"
+	knowledgeCmd "github.com/MinimalFuture/linkai-cli/cmd/knowledge"
+	modelCmd    "github.com/MinimalFuture/linkai-cli/cmd/model"
+	pluginCmd   "github.com/MinimalFuture/linkai-cli/cmd/plugin"
+	scoreCmd    "github.com/MinimalFuture/linkai-cli/cmd/score"
+	videoCmd    "github.com/MinimalFuture/linkai-cli/cmd/video"
+	workflowCmd "github.com/MinimalFuture/linkai-cli/cmd/workflow"
+	"github.com/MinimalFuture/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 var version = "dev"
@@ -57,9 +61,13 @@ func Execute() int {
 	rootCmd.AddCommand(knowledgeCmd.NewCmdKnowledge(f))
 	rootCmd.AddCommand(modelCmd.NewCmdModel(f))
 	rootCmd.AddCommand(videoCmd.NewCmdVideo(f))
+	rootCmd.AddCommand(chatCmd.NewCmdChat(f, nil))
+	rootCmd.AddCommand(pluginCmd.NewCmdPlugin(f))
+	rootCmd.AddCommand(scoreCmd.NewCmdScore(f))
+	rootCmd.AddCommand(workflowCmd.NewCmdWorkflow(f))
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(f.IOStreams.ErrOut, "Error:", err)
+		output.PrintError(f.IOStreams.ErrOut, f.IOStreams.IsTerminal, err.Error())
 		return 1
 	}
 	return 0

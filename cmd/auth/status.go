@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/auth"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 )
 
 // StatusOptions holds all inputs for auth status.

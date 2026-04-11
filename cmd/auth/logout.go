@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/auth"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
-	"github.com/yjr/linkai-cli/internal/config"
+	"github.com/MinimalFuture/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/config"
 )
 
 // LogoutOptions holds all inputs for auth logout.
@@ -42,6 +42,14 @@ func logoutRun(opts *LogoutOptions) error {
 	if cfg.User == nil {
 		fmt.Fprintln(f.IOStreams.ErrOut, "Not logged in.")
 		return nil
+	}
+
+	// Best-effort server-side token revocation so the token cannot be
+	// reused even if it was leaked before this logout.
+	if token := auth.GetStoredToken(); token != nil && token.AccessToken != "" {
+		if err := auth.RevokeToken(f.HttpClient(), cfg.APIBase(), token.AccessToken); err != nil {
+			fmt.Fprintf(f.IOStreams.ErrOut, "[linkai] [WARN] server-side revocation failed: %v\n", err)
+		}
 	}
 
 	if err := auth.RemoveStoredToken(); err != nil {

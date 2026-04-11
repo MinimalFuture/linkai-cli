@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/yjr/linkai-cli/internal/config"
+	"github.com/MinimalFuture/linkai-cli/internal/config"
 )
 
 const (

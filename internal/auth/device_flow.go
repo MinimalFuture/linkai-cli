@@ -266,6 +266,93 @@ func unwrapEnvelope(m map[string]interface{}) (map[string]interface{}, error) {
 	}
 }
 
+// RefreshResult holds the data returned by a successful token refresh.
+type RefreshResult struct {
+	AccessToken  string
+	ExpiresIn    int // new access token TTL in seconds
+	RefreshToken string
+	RefreshExpiresIn int
+}
+
+// RefreshAccessToken calls POST /api/cli/auth/refresh to obtain a new access
+// token using the given refresh token. The caller's http.Client should already
+// inject X-Device-ID via its transport.
+func RefreshAccessToken(client *http.Client, apiBase, refreshToken string) (*RefreshResult, error) {
+	u := apiBase + "/api/cli/auth/refresh"
+	payload, _ := json.Marshal(map[string]string{
+		"refresh_token": refreshToken,
+	})
+	req, err := http.NewRequest(http.MethodPost, u, bytes.NewReader(payload))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("refresh request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read refresh response: %w", err)
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("refresh failed: HTTP %d – response not JSON", resp.StatusCode)
+	}
+
+	if resp.StatusCode >= 400 {
+		msg := getString(raw, "message")
+		if msg == "" {
+			msg = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("refresh failed: %s", msg)
+	}
+
+	data, err := unwrapEnvelope(raw)
+	if err != nil {
+		return nil, fmt.Errorf("refresh failed: %w", err)
+	}
+
+	at := getString(data, "access_token")
+	if at == "" {
+		return nil, fmt.Errorf("refresh failed: no access_token in response")
+	}
+
+	return &RefreshResult{
+		AccessToken:      at,
+		ExpiresIn:        getInt(data, "expires_in", 7200),
+		RefreshToken:     getString(data, "refresh_token"),
+		RefreshExpiresIn: getInt(data, "refresh_expires_in", 7*24*3600),
+	}, nil
+}
+
+// RevokeToken calls POST /api/cli/auth/revoke to invalidate the token
+// server-side. This is a best-effort operation; errors are returned but
+// callers may choose to ignore them.
+func RevokeToken(client *http.Client, apiBase, accessToken string) error {
+	u := apiBase + "/api/cli/auth/revoke"
+	req, err := http.NewRequest(http.MethodPost, u, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("revoke request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("revoke failed: HTTP %d", resp.StatusCode)
+	}
+	return nil
+}
+
 // helpers
 
 func minInt(a, b int) int {

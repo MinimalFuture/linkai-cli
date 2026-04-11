@@ -5,14 +5,15 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
-	"github.com/yjr/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 type GenOptions struct {
 	Factory     *cmdutil.Factory
 	Ctx         context.Context
 	JSON        bool
+	DryRun      bool
 	Prompt      string
 	Model       string
 	Size        string
@@ -44,6 +45,7 @@ func NewCmdImageGen(f *cmdutil.Factory, runF func(*GenOptions) error) *cobra.Com
 	}
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 	cmd.Flags().StringVar(&opts.Model, "model", "", "image model (e.g. dall-e-3, doubao-seedream-4.5)")
 	cmd.Flags().StringVar(&opts.Size, "size", "", "image size (e.g. 1024x1024)")
 	cmd.Flags().StringVar(&opts.AspectRatio, "aspect-ratio", "", "aspect ratio (e.g. 1:1, 16:9)")
@@ -68,6 +70,14 @@ func genRun(opts *GenOptions) error {
 	}
 	if opts.AspectRatio != "" {
 		body["aspect_ratio"] = opts.AspectRatio
+	}
+
+	if opts.DryRun {
+		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
+			Method: "POST",
+			URL:    "/api/cli/image/gen",
+			Body:   body,
+		})
 	}
 
 	fmt.Fprintln(opts.Factory.IOStreams.ErrOut, "Generating image...")

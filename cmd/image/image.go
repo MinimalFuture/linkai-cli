@@ -2,7 +2,7 @@ package image
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 )
 
 func NewCmdImage(f *cmdutil.Factory) *cobra.Command {

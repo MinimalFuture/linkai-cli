@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 )
 
 // NewCmdApp creates the app command with subcommands.
@@ -14,6 +14,7 @@ func NewCmdApp(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCmdAppList(f, nil))
+	cmd.AddCommand(NewCmdAppDetail(f, nil))
 
 	return cmd
 }

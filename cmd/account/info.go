@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/cmdutil"
-	"github.com/yjr/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 // InfoOptions holds all inputs for account info.

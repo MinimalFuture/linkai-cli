@@ -6,14 +6,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/cmdutil"
-	"github.com/yjr/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 type SearchOptions struct {
 	Factory *cmdutil.Factory
 	Ctx     context.Context
 	JSON    bool
+	DryRun  bool
 	Code    string
 	Query   string
 	K       int
@@ -52,22 +53,33 @@ func NewCmdKnowledgeSearch(f *cmdutil.Factory, runF func(*SearchOptions) error) 
 	}
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 	cmd.Flags().IntVar(&opts.K, "k", 5, "number of results to return")
 
 	return cmd
 }
 
 func searchRun(opts *SearchOptions) error {
+	body := map[string]interface{}{
+		"code":  opts.Code,
+		"query": opts.Query,
+		"k":     opts.K,
+	}
+
+	if opts.DryRun {
+		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
+			Method: "POST",
+			URL:    "/api/cli/knowledge/search",
+			Body:   body,
+		})
+	}
+
 	client, err := opts.Factory.APIClient()
 	if err != nil {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/knowledge/search", map[string]interface{}{
-		"code":  opts.Code,
-		"query": opts.Query,
-		"k":     opts.K,
-	})
+	resp, err := client.Post(opts.Ctx, "/api/cli/knowledge/search", body)
 	if err != nil {
 		return fmt.Errorf("failed to search knowledge base: %w", err)
 	}

@@ -1,6 +1,6 @@
 # linkai-cli
 
-LinkAI 平台的官方命令行工具，让你在终端中管理应用、知识库、数据库，生成图片/视频/语音。
+LinkAI 平台的官方命令行工具，让你在终端中管理应用、知识库、数据库，执行插件和工作流，生成图片/视频/语音，以及与应用对话。
 
 ## 安装
 
@@ -54,6 +54,8 @@ linkai auth status --json
 linkai auth logout
 ```
 
+登出时会自动吊销服务端 token，确保 token 无法被重用。
+
 ---
 
 ## 命令参考
@@ -63,7 +65,7 @@ linkai auth logout
 ```bash
 linkai auth login                          # 登录（Device Flow）
 linkai auth login --scope "db:read db:write image:write video:write audio:write"
-linkai auth logout                         # 登出
+linkai auth logout                         # 登出（同时吊销服务端 token）
 linkai auth status                         # 查看当前登录状态
 ```
 
@@ -80,6 +82,17 @@ linkai account info --json
 linkai app list                            # 列出应用（表格）
 linkai app list --key "客服" --page 2      # 关键词搜索 + 翻页
 linkai app list --json                     # JSON 输出
+linkai app detail <code>                   # 查看应用详情（配置、模型、插件）
+```
+
+### chat — 对话（需要 `chat:write` scope）
+
+```bash
+linkai chat "你好" --app <app_code>                       # 单轮对话（流式输出）
+linkai chat "继续" --app <app_code> --session <session_id> # 多轮对话
+linkai chat "Hello" --app <app_code> --no-stream          # 非流式，等待完整回复
+linkai chat "Hello" --app <app_code> --json               # JSON 输出（自动禁用流式）
+linkai chat "Hello" --app <app_code> --dry-run            # 只打印请求，不实际执行
 ```
 
 ### knowledge — 知识库
@@ -88,8 +101,8 @@ linkai app list --json                     # JSON 输出
 linkai knowledge list                      # 列出知识库
 linkai knowledge create --name "产品文档"  # 创建知识库
 linkai knowledge delete <code>             # 删除知识库
-linkai knowledge files <code>             # 列出知识库文件
-linkai knowledge search <code> <query>    # 向量搜索
+linkai knowledge files <code>              # 列出知识库文件
+linkai knowledge search <code> <query>     # 向量搜索
 ```
 
 ### database — 数据库（需要 `db:read` scope）
@@ -136,6 +149,46 @@ linkai audio speech "你好，欢迎使用 LinkAI" --output hello.mp3   # 下载
 linkai audio speech "Test" --model tts-1-hd --voice alloy --json
 ```
 
+### plugin — 插件（需要 `plugin:read` / `plugin:run` scope）
+
+```bash
+linkai plugin list                                # 列出可用插件
+linkai plugin list --category "工具"              # 按分类筛选
+linkai plugin detail <code>                       # 查看插件详情
+linkai plugin exec <code> --input "查询内容"      # 执行插件
+linkai plugin exec <code> --arg key1=val1 --arg key2=val2  # 带结构化参数
+```
+
+### workflow — 工作流（需要 `workflow:read` / `workflow:run` scope）
+
+```bash
+linkai workflow list                                        # 列出工作流
+linkai workflow run <app_code> --input "输入文本"            # 运行工作流
+linkai workflow run <app_code> --input "text" --arg k=v     # 带额外参数
+linkai workflow run <app_code> --input "text" --session <id> # 多轮会话
+```
+
+### score — 积分管理（需要 `score:read` / `score:write` scope）
+
+```bash
+linkai score list                          # 查看积分套餐
+linkai score buy --product <id>            # 购买积分（终端显示付款二维码）
+linkai score buy --product <id> --json     # agent 模式，返回付款链接
+linkai score orders                        # 查看购买历史
+linkai score orders --page 2 --page-size 20
+```
+
+---
+
+## 通用 Flag
+
+所有命令均支持以下 flag：
+
+| Flag | 说明 |
+|------|------|
+| `--json` | JSON 格式输出，适合脚本和 agent 集成 |
+| `--dry-run` | 仅打印将要发送的请求，不实际执行（写操作命令） |
+
 ---
 
 ## 权限（Scope）
@@ -149,6 +202,7 @@ linkai audio speech "Test" --model tts-1-hd --voice alloy --json
 | `user:read` | 查询用户信息 | ✅ |
 | `workflow:read` | 查询工作流 | ✅ |
 | `knowledge:read` | 查询知识库 | ✅ |
+| `chat:write` | 与应用对话 | ❌ |
 | `knowledge:write` | 创建/编辑知识库 | ❌ |
 | `knowledge:delete` | 删除知识库 | ❌ |
 | `db:read` | 查询数据库/表/执行 SELECT | ❌ |
@@ -156,18 +210,26 @@ linkai audio speech "Test" --model tts-1-hd --voice alloy --json
 | `image:write` | 生成图片 | ❌ |
 | `video:write` | 生成视频 | ❌ |
 | `audio:write` | 语音合成（TTS） | ❌ |
+| `plugin:read` | 查询插件列表、详情 | ❌ |
+| `plugin:run` | 执行插件 | ❌ |
+| `workflow:run` | 执行工作流 | ❌ |
+| `score:read` | 查看积分套餐、购买历史 | ❌ |
+| `score:write` | 购买积分 | ❌ |
 
 需要额外权限时重新授权：
 
 ```bash
-# 数据库读写
-linkai auth login --scope "db:read db:write"
+# 对话 + 数据库读写
+linkai auth login --scope "chat:write db:read db:write"
 
 # 内容生成
 linkai auth login --scope "image:write video:write audio:write"
 
+# 插件 + 工作流
+linkai auth login --scope "plugin:read plugin:run workflow:run"
+
 # 一次性获取所有权限
-linkai auth login --scope "app:read chat:read user:read workflow:read knowledge:read knowledge:write knowledge:delete db:read db:write image:write video:write audio:write"
+linkai auth login --scope "app:read chat:read chat:write user:read workflow:read workflow:run knowledge:read knowledge:write knowledge:delete db:read db:write image:write video:write audio:write plugin:read plugin:run score:read score:write"
 ```
 
 ---
@@ -176,7 +238,10 @@ linkai auth login --scope "app:read chat:read user:read workflow:read knowledge:
 
 - **Opaque Token**：服务端存储，可随时撤销
 - **双 Token**：`access_token` 有效期 2 小时，`refresh_token` 有效期 7 天
+- **自动刷新**：`access_token` 到期前 5 分钟自动使用 `refresh_token` 换取新 token，无需重新登录
+- **服务端吊销**：`linkai auth logout` 同时调用服务端 revoke 接口，确保 token 立即失效
 - **设备绑定**：每台机器生成唯一 `device_id`，所有请求携带 `X-Device-ID` 头，服务端将 token 与 device_id 绑定
+- **网络容错**：内置重试机制，502/503/504 自动指数退避重试（最多 3 次）
 
 ## 本地文件
 
@@ -191,6 +256,7 @@ linkai auth login --scope "app:read chat:read user:read workflow:read knowledge:
 ```bash
 go build -o linkai .     # 构建
 go build ./...           # 验证所有包可编译
+go test ./...            # 运行测试
 go mod tidy              # 整理依赖
 ```
 

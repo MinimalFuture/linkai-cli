@@ -111,7 +111,12 @@ func (c *Client) Stream(ctx context.Context, path string, body interface{}) (io.
 		return nil, err
 	}
 	if resp.StatusCode >= 400 {
-		resp.Body.Close()
+		defer resp.Body.Close()
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		detail := extractErrorDetail(errBody)
+		if detail != "" {
+			return nil, fmt.Errorf("stream request failed: HTTP %d – %s", resp.StatusCode, detail)
+		}
 		return nil, fmt.Errorf("stream request failed: HTTP %d", resp.StatusCode)
 	}
 	return resp.Body, nil
@@ -132,9 +137,22 @@ func (c *Client) do(req *http.Request) (*Response, error) {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	ct := resp.Header.Get("Content-Type")
+	if !isJSONContentType(ct) && resp.StatusCode >= 400 {
+		snippet := string(raw)
+		if len(snippet) > 200 {
+			snippet = snippet[:200] + "…"
+		}
+		return nil, fmt.Errorf("unexpected response (HTTP %d, Content-Type %q): %s", resp.StatusCode, ct, snippet)
+	}
+
 	var envelope Response
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return nil, fmt.Errorf("failed to parse response (HTTP %d): %w", resp.StatusCode, err)
+		snippet := string(raw)
+		if len(snippet) > 200 {
+			snippet = snippet[:200] + "…"
+		}
+		return nil, fmt.Errorf("failed to parse response (HTTP %d): body=%s", resp.StatusCode, snippet)
 	}
 	if !envelope.OK() {
 		return nil, envelope.Err()
@@ -146,4 +164,39 @@ func (c *Client) setAuth(req *http.Request) {
 	if c.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
+}
+
+// isJSONContentType returns true if ct looks like a JSON content type.
+func isJSONContentType(ct string) bool {
+	for _, s := range []string{"application/json", "text/json"} {
+		if len(ct) >= len(s) && ct[:len(s)] == s {
+			return true
+		}
+	}
+	return ct == ""
+}
+
+// extractErrorDetail tries to pull a human-readable message from an error
+// response body (JSON envelope or plain text).
+func extractErrorDetail(body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+	var obj map[string]interface{}
+	if json.Unmarshal(body, &obj) == nil {
+		if msg, ok := obj["message"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := obj["msg"].(string); ok && msg != "" {
+			return msg
+		}
+		if msg, ok := obj["error"].(string); ok && msg != "" {
+			return msg
+		}
+	}
+	s := string(body)
+	if len(s) > 200 {
+		s = s[:200] + "…"
+	}
+	return s
 }

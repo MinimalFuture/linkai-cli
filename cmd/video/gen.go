@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
-	"github.com/yjr/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 type VideoGenOptions struct {
 	Factory     *cmdutil.Factory
 	Ctx         context.Context
 	JSON        bool
+	DryRun      bool
 	Prompt      string
 	Model       string
 	Duration    int
@@ -54,6 +55,7 @@ Generation typically takes 30s–3 minutes depending on the model.`,
 	}
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 	cmd.Flags().StringVar(&opts.Model, "model", "", "video model (e.g. jimeng_t2v_v30)")
 	cmd.Flags().IntVar(&opts.Duration, "duration", 5, "video duration in seconds")
 	cmd.Flags().StringVar(&opts.AspectRatio, "aspect-ratio", "16:9", "aspect ratio (e.g. 16:9, 9:16, 1:1)")
@@ -77,6 +79,14 @@ func videoGenRun(opts *VideoGenOptions) error {
 	}
 	if opts.Model != "" {
 		createBody["model"] = opts.Model
+	}
+
+	if opts.DryRun {
+		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
+			Method: "POST",
+			URL:    "/api/cli/video/gen",
+			Body:   createBody,
+		})
 	}
 
 	resp, err := client.Post(opts.Ctx, "/api/cli/video/gen", createBody)

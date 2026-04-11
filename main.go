@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/yjr/linkai-cli/cmd"
+	"github.com/MinimalFuture/linkai-cli/cmd"
 )
 
 func main() {

@@ -6,12 +6,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/yjr/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 type DeleteOptions struct {
 	Factory *cmdutil.Factory
 	Ctx     context.Context
+	DryRun  bool
 	Code    string
 	Force   bool
 }
@@ -37,12 +39,21 @@ func NewCmdKnowledgeDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) 
 	}
 
 	cmd.Flags().BoolVar(&opts.Force, "force", false, "skip confirmation prompt")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 
 	return cmd
 }
 
 func deleteRun(opts *DeleteOptions) error {
 	f := opts.Factory
+
+	if opts.DryRun {
+		return output.PrintDryRun(f.IOStreams.Out, output.DryRunInfo{
+			Method: "POST",
+			URL:    "/api/cli/knowledge/delete",
+			Body:   map[string]string{"code": opts.Code},
+		})
+	}
 
 	if !opts.Force && f.IOStreams.IsStdinTerminal {
 		fmt.Fprintf(f.IOStreams.ErrOut, "Delete knowledge base %q? This cannot be undone. [y/N] ", opts.Code)

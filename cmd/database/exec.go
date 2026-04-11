@@ -7,15 +7,16 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/yjr/linkai-cli/internal/auth"
-	"github.com/yjr/linkai-cli/internal/cmdutil"
-	"github.com/yjr/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 type ExecOptions struct {
 	Factory *cmdutil.Factory
 	Ctx     context.Context
 	JSON    bool
+	DryRun  bool
 	Code    string
 	SQL     string
 }
@@ -54,6 +55,7 @@ Write operations (INSERT/UPDATE/DELETE) require the db:write scope.`,
 	}
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 
 	return cmd
 }
@@ -79,14 +81,22 @@ func execRun(opts *ExecOptions) error {
 		}
 	}
 
-	client, err := opts.Factory.APIClient()
-	if err != nil {
-		return err
-	}
-
 	body := map[string]string{
 		"code": opts.Code,
 		"sql":  opts.SQL,
+	}
+
+	if opts.DryRun {
+		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
+			Method: "POST",
+			URL:    "/api/cli/database/exec",
+			Body:   body,
+		})
+	}
+
+	client, err := opts.Factory.APIClient()
+	if err != nil {
+		return err
 	}
 
 	resp, err := client.Post(opts.Ctx, "/api/cli/database/exec", body)
