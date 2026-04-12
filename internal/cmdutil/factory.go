@@ -11,16 +11,18 @@ import (
 	"github.com/MinimalFuture/linkai-cli/internal/api"
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
 	"github.com/MinimalFuture/linkai-cli/internal/config"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 // ErrNotLoggedIn is returned by APIClient when no valid token is found.
-var ErrNotLoggedIn = fmt.Errorf("not logged in: run 'linkai auth login'")
+var ErrNotLoggedIn = output.ErrAuth("not logged in: run 'linkai auth login'")
 
 type Factory struct {
-	Config     func() (*config.Config, error)
-	HttpClient func() *http.Client
-	IOStreams   *IOStreams
-	APIClient  func() (*api.Client, error)
+	Config           func() (*config.Config, error)
+	HttpClient       func() *http.Client
+	StreamHttpClient func() *http.Client // no timeout, for SSE / long-running requests
+	IOStreams         *IOStreams
+	APIClient        func() (*api.Client, error)
 }
 
 func NewDefault() *Factory {
@@ -61,6 +63,21 @@ func NewDefault() *Factory {
 		}
 	}
 
+	f.StreamHttpClient = func() *http.Client {
+		var deviceID string
+		if cfg, err := f.Config(); err == nil {
+			deviceID, _ = config.EnsureDeviceID(cfg)
+		}
+		return &http.Client{
+			// No timeout — streaming connections are long-lived;
+			// cancellation is handled via context.
+			Transport: &deviceIDTransport{
+				base:     newRetryTransport(http.DefaultTransport, 3),
+				deviceID: deviceID,
+			},
+		}
+	}
+
 	var cachedAPIClient *api.Client
 	f.APIClient = func() (*api.Client, error) {
 		if cachedAPIClient != nil {
@@ -77,7 +94,7 @@ func NewDefault() *Factory {
 
 		switch auth.TokenStatus(token) {
 		case "expired":
-			return nil, fmt.Errorf("token has expired: run 'linkai auth login'")
+			return nil, output.ErrAuth("token has expired: run 'linkai auth login'")
 
 		case "needs_refresh":
 			refreshed, err := auth.RefreshAccessToken(f.HttpClient(), cfg.APIBase(), token.RefreshToken)
@@ -99,7 +116,9 @@ func NewDefault() *Factory {
 			}
 		}
 
-		cachedAPIClient = api.New(cfg.APIBase(), f.HttpClient(), token.AccessToken)
+		client := api.New(cfg.APIBase(), f.HttpClient(), token.AccessToken)
+		client.StreamHTTPClient = f.StreamHttpClient()
+		cachedAPIClient = client
 		return cachedAPIClient, nil
 	}
 

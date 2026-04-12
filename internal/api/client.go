@@ -8,15 +8,18 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 // Client is a LinkAI API client. It attaches Authorization and delegates
 // X-Device-ID injection to the underlying http.Client transport (set up
 // in cmdutil.Factory).
 type Client struct {
-	BaseURL    string
-	HTTPClient *http.Client
-	Token      string
+	BaseURL          string
+	HTTPClient       *http.Client
+	StreamHTTPClient *http.Client // optional; used for SSE / long-running requests
+	Token            string
 }
 
 // New creates a new API client.
@@ -44,11 +47,20 @@ func (r *Response) Decode(v interface{}) error {
 }
 
 // Err returns a non-nil error when the response code is not 200.
+// It classifies errors by API code to produce appropriate exit codes.
 func (r *Response) Err() error {
 	if r.OK() {
 		return nil
 	}
-	return fmt.Errorf("API error %d: %s", r.Code, r.Msg)
+	msg := fmt.Sprintf("API error %d: %s", r.Code, r.Msg)
+	switch {
+	case r.Code == 401 || r.Code == 403:
+		return output.ErrAuth(msg)
+	case r.Code >= 500:
+		return output.ErrNetwork(msg)
+	default:
+		return output.Errorf("%s", msg)
+	}
 }
 
 // Get sends a GET request to path with optional query parameters.
@@ -106,7 +118,11 @@ func (c *Client) Stream(ctx context.Context, path string, body interface{}) (io.
 	req.Header.Set("Accept", "text/event-stream")
 	c.setAuth(req)
 
-	resp, err := c.HTTPClient.Do(req)
+	httpClient := c.HTTPClient
+	if c.StreamHTTPClient != nil {
+		httpClient = c.StreamHTTPClient
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +144,7 @@ func (c *Client) do(req *http.Request) (*Response, error) {
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, output.ErrNetwork("request failed: %v", err)
 	}
 	defer resp.Body.Close()
 

@@ -107,7 +107,11 @@ func videoGenRun(opts *VideoGenOptions) error {
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
-		time.Sleep(pollInterval)
+		select {
+		case <-time.After(pollInterval):
+		case <-opts.Ctx.Done():
+			return fmt.Errorf("cancelled while waiting for video (task_id: %s)", task.TaskID)
+		}
 
 		statusBody := map[string]interface{}{
 			"task_id":  task.TaskID,

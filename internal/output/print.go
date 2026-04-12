@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/MinimalFuture/linkai-cli/internal/validate"
 )
 
 // PrintJSON writes v as indented JSON to w.
@@ -22,7 +24,11 @@ func PrintTable(w io.Writer, headers []string, rows [][]string) {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, strings.Join(headers, "\t"))
 	for _, row := range rows {
-		fmt.Fprintln(tw, strings.Join(row, "\t"))
+		sanitized := make([]string, len(row))
+		for i, cell := range row {
+			sanitized[i] = validate.SanitizeOutput(cell)
+		}
+		fmt.Fprintln(tw, strings.Join(sanitized, "\t"))
 	}
 	tw.Flush()
 }

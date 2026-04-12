@@ -91,7 +91,7 @@ func speechRun(opts *SpeechOptions) error {
 	}
 
 	if opts.Output != "" {
-		if err := downloadFile(result.URL, opts.Output); err != nil {
+		if err := downloadFile(opts.Ctx, result.URL, opts.Output); err != nil {
 			return fmt.Errorf("failed to download audio: %w", err)
 		}
 		if opts.JSON {
@@ -112,8 +112,12 @@ func speechRun(opts *SpeechOptions) error {
 	return nil
 }
 
-func downloadFile(url, dest string) error {
-	resp, err := http.Get(url) //nolint:noctx
+func downloadFile(ctx context.Context, url, dest string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}

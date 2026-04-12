@@ -227,7 +227,11 @@ func humanFlow(opts *BuyOptions, client *api.Client, orderNo, codeURL string) er
 
 	deadline := time.Now().Add(pollTimeout)
 	for time.Now().Before(deadline) {
-		time.Sleep(pollInterval)
+		select {
+		case <-time.After(pollInterval):
+		case <-opts.Ctx.Done():
+			return fmt.Errorf("cancelled — order %s still pending", orderNo)
+		}
 
 		params := url.Values{}
 		params.Set("orderNo", orderNo)

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
 
 // RequiredScopeKey is the cobra command annotation key for declaring required scope.
@@ -24,20 +25,19 @@ func HasScope(tokenScope, required string) bool {
 }
 
 // CheckScope verifies that token carries the required scope.
-// Returns a descriptive error with a remediation hint when the check fails.
+// Returns a structured ExitError with a remediation hint when the check fails.
 func CheckScope(token *auth.StoredToken, required string) error {
 	if token == nil {
-		return fmt.Errorf("not logged in: run 'linkai auth login'")
+		return output.ErrAuth("not logged in: run 'linkai auth login'")
 	}
 	if HasScope(token.Scope, required) {
 		return nil
 	}
-	return fmt.Errorf(
-		"permission denied: this operation requires the %q scope\n"+
-			"  Re-authorize to include it:\n"+
-			"    linkai auth login --scope %q",
-		required,
-		mergeScopes(token.Scope, required),
+	merged := mergeScopes(token.Scope, required)
+	return output.ErrWithHint(
+		output.ExitAuth,
+		fmt.Sprintf("permission denied: this operation requires the %q scope", required),
+		fmt.Sprintf("linkai auth login --scope %q", merged),
 	)
 }
 

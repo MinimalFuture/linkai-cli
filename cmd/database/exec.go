@@ -10,6 +10,7 @@ import (
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/validate"
 )
 
 type ExecOptions struct {
@@ -60,6 +61,17 @@ Write operations (INSERT/UPDATE/DELETE) require the db:write scope.`,
 	return cmd
 }
 
+// isDangerousSQL returns true for DDL operations that should not be allowed via CLI.
+func isDangerousSQL(sql string) bool {
+	upper := strings.ToUpper(strings.TrimSpace(sql))
+	for _, prefix := range []string{"DROP", "TRUNCATE", "ALTER"} {
+		if strings.HasPrefix(upper, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // isMutatingSQL returns true when the SQL is a write operation (not SELECT).
 func isMutatingSQL(sql string) bool {
 	upper := strings.ToUpper(strings.TrimSpace(sql))
@@ -72,6 +84,16 @@ func isMutatingSQL(sql string) bool {
 }
 
 func execRun(opts *ExecOptions) error {
+	// Validate SQL input for control characters
+	if err := validate.RejectControlChars("sql", opts.SQL); err != nil {
+		return output.ErrValidation("%v", err)
+	}
+
+	// Reject dangerous DDL operations
+	if isDangerousSQL(opts.SQL) {
+		return output.ErrValidation("dangerous SQL operation detected: DROP/TRUNCATE/ALTER are not allowed via CLI")
+	}
+
 	// Client-side scope pre-check for mutating SQL so the user gets the normal
 	// re-login hint before the request is even sent.
 	if isMutatingSQL(opts.SQL) {

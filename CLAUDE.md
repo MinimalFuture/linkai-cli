@@ -5,8 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Build
-go build -o linkai .
+# Build (with version injection)
+make build
+# or manually:
+go build -ldflags "-X github.com/MinimalFuture/linkai-cli/cmd.version=$(git describe --tags --always) -X github.com/MinimalFuture/linkai-cli/cmd.buildDate=$(date -u +%Y-%m-%d)" -o linkai .
 
 # Build and verify all packages compile
 go build ./...
@@ -14,11 +16,19 @@ go build ./...
 # Run
 ./linkai <command>
 
-# Run tests
-go test ./...
+# Run tests (with race detector)
+make test
+# or: go test -race -count=1 ./...
+
+# Lint
+make lint
+# or: golangci-lint run ./...
 
 # Tidy dependencies
 go mod tidy
+
+# Install
+make install
 ```
 
 ## Architecture
@@ -44,10 +54,14 @@ cmd/plugin/                       → plugin subcommands (list/detail/exec)
 cmd/workflow/                     → workflow subcommands (list/run)
 cmd/score/                        → score subcommands (list/buy/orders — with QR code payment polling)
 internal/auth/device_flow.go      → Device Flow HTTP calls + token refresh + server-side revoke
-internal/auth/token_store.go      → StoredToken persisted at ~/.linkai/token.json
+internal/auth/token_store.go      → StoredToken persisted to OS keychain (macOS) with file fallback at ~/.linkai/token.json
 internal/api/client.go            → unified HTTP client (auth header, X-Device-ID, error unwrapping, non-JSON detection)
-internal/output/print.go          → output helpers (JSON, table, success/error messages)
+internal/output/print.go          → output helpers (JSON, table, success/error messages, sanitized output)
 internal/output/dryrun.go         → dry-run output helper (prints request without executing)
+internal/output/errors.go         → structured ExitError with exit codes (0=ok, 1=general, 2=validation, 3=auth, 4=network)
+internal/validate/validate.go     → input validation (control char rejection) and output sanitization (ANSI stripping)
+internal/keychain/keychain.go     → OS keychain token storage (macOS Keychain, file fallback)
+cmd/completion/completion.go      → shell completion generation (bash/zsh/fish/powershell)
 internal/config/config.go         → config + device_id at ~/.linkai/config.json
 internal/cmdutil/factory.go       → dependency injection (Config, HttpClient, IOStreams, APIClient, auto token refresh)
 internal/cmdutil/iostreams.go     → In/Out/ErrOut/IsTerminal abstraction
@@ -62,13 +76,13 @@ internal/cmdutil/transport.go     → retry transport (exponential backoff on 50
 1. `POST /api/cli/auth/device` → sends `device_id` + `scope`, returns `device_code` + `verification_uri_complete`
 2. CLI prints the URL to stderr; user opens it in browser and approves (can select granted scopes)
 3. CLI polls `POST /api/cli/auth/token` (with `device_code`) until authorized or timed out
-4. On success: opaque `access_token` + `refresh_token` saved to `~/.linkai/token.json`, user info + `device_id` to `~/.linkai/config.json`
+4. On success: opaque `access_token` + `refresh_token` saved to OS keychain (macOS) with `~/.linkai/token.json` as fallback; user info + `device_id` to `~/.linkai/config.json`
 
 Supports `--no-wait` (print URL + device_code, return immediately) and `--device-code` (resume polling from a prior `--no-wait` call). Error strings: `authorization_pending`, `slow_down`, `access_denied`, `expired_token`.
 
 ### Token lifecycle
 
-- **Opaque tokens** (not JWT): stored in Redis on the server, can be revoked
+- **Opaque tokens** (not JWT): stored in Redis on the server, can be revoked; locally stored in OS keychain (macOS Keychain) with `~/.linkai/token.json` as fallback
 - **access_token** TTL: 2 hours; **refresh_token** TTL: 7 days
 - **device_id**: persistent machine UUID stored in `config.json`, sent as `X-Device-ID` header on every request; server binds tokens to device_id and rejects mismatched requests
 - `TokenStatus()` returns `"valid"` / `"needs_refresh"` (within 5 min of expiry) / `"expired"`
@@ -182,9 +196,12 @@ Follow the pattern in `cmd/database/` or `cmd/image/`:
 - For write commands: support `--dry-run` with `output.PrintDryRun()` to show the request without sending
 - For list commands with pagination: use `--page` / `--page-size` flags (maps to backend `pageNo`/`pageSize`)
 - Truncate displayed strings by **rune count**, not byte length: `[]rune(s)[:n]` to avoid corrupting CJK/emoji
-- For async tasks (e.g. video): poll with `time.Sleep` + context check; print progress to `f.IOStreams.ErrOut`
-- For binary downloads (e.g. audio `--output`): use `net/http` GET directly on the CDN URL, no API client needed
+- For async tasks (e.g. video): poll with `select { case <-time.After(): case <-ctx.Done(): }` for proper cancellation; print progress to `f.IOStreams.ErrOut`
+- For binary downloads (e.g. audio `--output`): use `http.NewRequestWithContext` + `http.DefaultClient.Do()` on the CDN URL
 - For streaming (e.g. chat): use `client.Stream()` + `bufio.Scanner` with expanded buffer; always log parse errors to `ErrOut`
+- For errors: use `output.ErrAuth()` / `output.ErrValidation()` / `output.ErrNetwork()` / `output.Errorf()` instead of plain `fmt.Errorf`
+- For user input: validate with `validate.RejectControlChars()` before passing to API
+- For dangerous operations (e.g. database DDL): add client-side validation to reject DROP/TRUNCATE/ALTER
 
 ### Testing
 
@@ -200,7 +217,50 @@ Key test files:
 - `internal/api/client_test.go` — JSON envelope, non-JSON errors, API error codes, stream errors
 - `internal/cmdutil/transport_test.go` — retry behavior, backoff, exhaustion
 
+### Structured errors (`internal/output/errors.go`)
+
+Commands return `*output.ExitError` with classified exit codes:
+- `0` — success
+- `1` — general error
+- `2` — validation error (bad input, invalid flags)
+- `3` — auth error (not logged in, expired, permission denied)
+- `4` — network error (connection failed, 5xx)
+
+Use `output.ErrWithHint(code, msg, hint)` to attach actionable remediation hints.
+
+### Input validation & output sanitization (`internal/validate/`)
+
+- `validate.RejectControlChars(field, s)` — rejects C0 control chars, Bidi overrides, zero-width characters
+- `validate.SanitizeOutput(s)` — strips ANSI escape sequences and dangerous Unicode from terminal output
+- Table output (`output.PrintTable`) is automatically sanitized
+- `database exec` validates SQL input and blocks DDL (DROP/TRUNCATE/ALTER)
+
+### Token storage (`internal/keychain/`)
+
+Tokens are stored using OS-native secure storage when available:
+- **macOS**: System Keychain via `security` CLI (service: `linkai-cli`, account: `token`)
+- **Fallback**: `~/.linkai/token.json` with `0600` permissions
+
+`GetStoredToken()` tries keychain first, falls back to file. `SetStoredToken()` writes to both (keychain + file for backward compatibility). `RemoveStoredToken()` clears both.
+
 ### Config & token files
 
 - `~/.linkai/config.json` — persistent `device_id` + logged-in user info (api_base is runtime-only via `LINKAI_API_BASE` env var)
-- `~/.linkai/token.json` — `access_token`, `refresh_token`, `scope`, expiry timestamps (Unix ms)
+- `~/.linkai/token.json` — `access_token`, `refresh_token`, `scope`, expiry timestamps (Unix ms) — file fallback for keychain
+- macOS Keychain entry — primary token storage (service: `linkai-cli`)
+
+### CI/CD
+
+- `.github/workflows/test.yml` — unit tests with race detector on Go 1.20/1.21/1.22
+- `.github/workflows/lint.yml` — golangci-lint (12 linters: errcheck, bodyclose, staticcheck, etc.)
+- `.github/workflows/release.yml` — GoReleaser multi-platform builds on tag push (linux/darwin/windows × amd64/arm64)
+- `.golangci.yml` — linter configuration
+- `.goreleaser.yml` — release build configuration with ldflags version injection
+
+### Shell completion
+
+```bash
+linkai completion bash    # Bash completion script
+linkai completion zsh     # Zsh completion script
+linkai completion fish    # Fish completion script
+```
