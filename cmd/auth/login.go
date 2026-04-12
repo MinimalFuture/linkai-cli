@@ -74,6 +74,33 @@ func loginRun(opts *LoginOptions) error {
 		return loginPollDeviceCode(opts, cfg)
 	}
 
+	// Already logged in? Check token freshness before starting a new Device Flow.
+	if existing := auth.GetStoredToken(); existing != nil {
+		status := auth.TokenStatus(existing)
+		if status == "valid" || status == "needs_refresh" {
+			userName := ""
+			if cfg.User != nil {
+				userName = cfg.User.UserName
+			}
+			if opts.JSON {
+				data := map[string]interface{}{
+					"event":     "already_logged_in",
+					"user_name": userName,
+					"scope":     existing.Scope,
+				}
+				enc := json.NewEncoder(f.IOStreams.Out)
+				enc.SetEscapeHTML(false)
+				return enc.Encode(data)
+			}
+			if userName != "" {
+				fmt.Fprintf(f.IOStreams.ErrOut, "Already logged in as %s (scope: %s). Use `linkai auth logout` first to switch accounts.\n", userName, existing.Scope)
+			} else {
+				fmt.Fprintf(f.IOStreams.ErrOut, "Already logged in (scope: %s). Use `linkai auth logout` first to switch accounts.\n", existing.Scope)
+			}
+			return nil
+		}
+	}
+
 	// Get persistent device ID from config
 	deviceID, err := config.EnsureDeviceID(cfg)
 	if err != nil {
