@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -74,10 +75,10 @@ func loginRun(opts *LoginOptions) error {
 		return loginPollDeviceCode(opts, cfg)
 	}
 
-	// Already logged in? Check token freshness before starting a new Device Flow.
+	// Already logged in? Skip Device Flow unless the user is requesting new scopes.
 	if existing := auth.GetStoredToken(); existing != nil {
 		status := auth.TokenStatus(existing)
-		if status == "valid" || status == "needs_refresh" {
+		if (status == "valid" || status == "needs_refresh") && scopesCovered(opts.Scope, existing.Scope) {
 			userName := ""
 			if cfg.User != nil {
 				userName = cfg.User.UserName
@@ -192,6 +193,21 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	}
 
 	return saveLoginResult(opts, cfg, result.Token)
+}
+
+// scopesCovered reports whether all scopes in requested are present in granted.
+// Both are space-separated scope strings.
+func scopesCovered(requested, granted string) bool {
+	grantedSet := make(map[string]struct{})
+	for _, s := range strings.Fields(granted) {
+		grantedSet[s] = struct{}{}
+	}
+	for _, s := range strings.Fields(requested) {
+		if _, ok := grantedSet[s]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // rebaseURL replaces the scheme and host of rawURL with those from base,
