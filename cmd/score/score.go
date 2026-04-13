@@ -15,6 +15,7 @@ func NewCmdScore(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(NewCmdScoreList(f, nil))
 	cmd.AddCommand(NewCmdScoreBuy(f, nil))
 	cmd.AddCommand(NewCmdScoreOrders(f, nil))
+	cmd.AddCommand(NewCmdScoreOrder(f, nil))
 
 	return cmd
 }
