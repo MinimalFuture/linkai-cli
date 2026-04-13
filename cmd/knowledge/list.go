@@ -17,10 +17,8 @@ type ListOptions struct {
 }
 
 type KnowledgeBase struct {
-	Code  string `json:"code"`
-	Name  string `json:"name"`
-	Desc  string `json:"desc"`
-	Total int    `json:"total"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 type KnowledgeBaseListResult struct {
@@ -76,15 +74,10 @@ func listKBRun(opts *ListOptions) error {
 		return nil
 	}
 
-	headers := []string{"CODE", "NAME", "DESC", "FILES"}
+	headers := []string{"CODE", "NAME"}
 	rows := make([][]string, 0, len(result.List))
 	for _, kb := range result.List {
-		desc := string([]rune(kb.Desc))
-		runes := []rune(desc)
-		if len(runes) > 40 {
-			desc = string(runes[:40]) + "..."
-		}
-		rows = append(rows, []string{kb.Code, kb.Name, desc, fmt.Sprintf("%d", kb.Total)})
+		rows = append(rows, []string{kb.Code, kb.Name})
 	}
 	output.PrintTable(opts.Factory.IOStreams.Out, headers, rows)
 	fmt.Fprintf(opts.Factory.IOStreams.ErrOut, "\nTotal: %d\n", result.Total)

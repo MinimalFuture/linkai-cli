@@ -25,10 +25,13 @@ type SearchResult struct {
 }
 
 type SearchHit struct {
-	Text       string  `json:"text"`
-	Similarity float64 `json:"similarity"`
-	FileName   string  `json:"fileName"`
-	FileID     string  `json:"fileId"`
+	Text        string  `json:"text"`
+	Question    string  `json:"question"`
+	Answer      string  `json:"answer"`
+	Similarity  float64 `json:"similarity"`
+	RerankScore float64 `json:"rerank_score"`
+	Source      string  `json:"source"`
+	DataType    string  `json:"data_type"`
 }
 
 func NewCmdKnowledgeSearch(f *cmdutil.Factory, runF func(*SearchOptions) error) *cobra.Command {
@@ -99,8 +102,17 @@ func searchRun(opts *SearchOptions) error {
 	}
 
 	for i, hit := range result.List {
-		fmt.Fprintf(opts.Factory.IOStreams.Out, "[%d] similarity=%.4f  file=%s\n", i+1, hit.Similarity, hit.FileName)
-		fmt.Fprintf(opts.Factory.IOStreams.Out, "    %s\n\n", truncateRunes(hit.Text, 200))
+		scoreStr := fmt.Sprintf("similarity=%.4f", hit.Similarity)
+		if hit.RerankScore > 0 {
+			scoreStr += fmt.Sprintf("  rerank=%.4f", hit.RerankScore)
+		}
+		fmt.Fprintf(opts.Factory.IOStreams.Out, "[%d] %s  type=%s  source=%s\n", i+1, scoreStr, hit.DataType, hit.Source)
+		if hit.DataType == "QA" {
+			fmt.Fprintf(opts.Factory.IOStreams.Out, "    Q: %s\n", truncateRunes(hit.Question, 200))
+			fmt.Fprintf(opts.Factory.IOStreams.Out, "    A: %s\n\n", truncateRunes(hit.Answer, 200))
+		} else {
+			fmt.Fprintf(opts.Factory.IOStreams.Out, "    %s\n\n", truncateRunes(hit.Text, 200))
+		}
 	}
 
 	return nil

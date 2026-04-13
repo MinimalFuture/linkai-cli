@@ -20,10 +20,8 @@ type ListOptions struct {
 }
 
 type DatabaseItem struct {
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Description string `json:"description"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 type DatabaseListResult struct {
@@ -85,14 +83,10 @@ func listRun(opts *ListOptions) error {
 		return nil
 	}
 
-	headers := []string{"CODE", "NAME", "TYPE", "DESCRIPTION"}
+	headers := []string{"CODE", "NAME"}
 	rows := make([][]string, 0, len(result.List))
 	for _, db := range result.List {
-		desc := []rune(db.Description)
-		if len(desc) > 40 {
-			desc = append(desc[:40], []rune("...")...)
-		}
-		rows = append(rows, []string{db.Code, db.Name, db.Type, string(desc)})
+		rows = append(rows, []string{db.Code, db.Name})
 	}
 	output.PrintTable(opts.Factory.IOStreams.Out, headers, rows)
 

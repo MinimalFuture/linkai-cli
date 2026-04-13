@@ -12,7 +12,7 @@ import (
 const RequiredScopeKey = "required_scope"
 
 // DefaultReadScopes is the set of scopes granted by default on login.
-const DefaultReadScopes = "app:read chat:read user:read workflow:read knowledge:read"
+const DefaultReadScopes = "app:read chat:read chat:write user:read workflow:read workflow:run knowledge:read db:read image:write video:write audio:write plugin:read plugin:run score:read score:write model:read"
 
 // HasScope reports whether tokenScope (space-separated) contains required.
 func HasScope(tokenScope, required string) bool {

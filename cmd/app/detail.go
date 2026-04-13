@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
@@ -21,34 +20,8 @@ type DetailOptions struct {
 type AppDetail struct {
 	Code        string `json:"code"`
 	Name        string `json:"name"`
-	Type        string `json:"type"`
 	Description string `json:"description"`
-	HeadImageURL string `json:"headImageUrl"`
-	Introduction string `json:"introduction"`
-	NickName    string `json:"nickName"`
-	UsageCount  int    `json:"usageCount"`
-	ThumbCount  int    `json:"thumbCount"`
-	AppStatus   string `json:"appStatus"`
-
-	Temperature    string `json:"temperature"`
-	MaxContextTurn int    `json:"maxContextTurn"`
-	EnableMultiAgent string `json:"enableMultiAgent"`
-	DisplayThought   string `json:"displayThought"`
-	DisplayPlugin    string `json:"displayPlugin"`
-
-	SupportModelList  []AppModel  `json:"supportModelList"`
-	AppPluginsInfoVos []AppPlugin `json:"appPluginsInfoVos"`
-}
-
-type AppModel struct {
-	Code      string `json:"code"`
-	Name      string `json:"name"`
-	IsDefault bool   `json:"isDefault"`
-}
-
-type AppPlugin struct {
-	Name    string `json:"name"`
-	Enabled string `json:"enabled"`
+	Type        string `json:"type"`
 }
 
 func NewCmdAppDetail(f *cmdutil.Factory, runF func(*DetailOptions) error) *cobra.Command {
@@ -100,61 +73,12 @@ func detailRun(opts *DetailOptions) error {
 	}
 
 	w := opts.Factory.IOStreams.Out
-
-	fmt.Fprintf(w, "Name:        %s\n", detail.Name)
 	fmt.Fprintf(w, "Code:        %s\n", detail.Code)
+	fmt.Fprintf(w, "Name:        %s\n", detail.Name)
 	fmt.Fprintf(w, "Type:        %s\n", detail.Type)
-	if detail.AppStatus != "" {
-		fmt.Fprintf(w, "Status:      %s\n", detail.AppStatus)
-	}
 	if detail.Description != "" {
 		fmt.Fprintf(w, "Description: %s\n", detail.Description)
 	}
-	if detail.Introduction != "" {
-		fmt.Fprintf(w, "Introduction:%s\n", detail.Introduction)
-	}
-	if detail.NickName != "" {
-		fmt.Fprintf(w, "Creator:     %s\n", detail.NickName)
-	}
-	fmt.Fprintf(w, "Usage:       %d  Likes: %d\n", detail.UsageCount, detail.ThumbCount)
-
-	fmt.Fprintln(w, "\nConfig:")
-	fmt.Fprintf(w, "  Temperature:       %s\n", detail.Temperature)
-	fmt.Fprintf(w, "  Max context turns: %d\n", detail.MaxContextTurn)
-	fmt.Fprintf(w, "  Multi-agent:       %s\n", yesNo(detail.EnableMultiAgent))
-	fmt.Fprintf(w, "  Show thought:      %s\n", yesNo(detail.DisplayThought))
-	fmt.Fprintf(w, "  Show plugin:       %s\n", yesNo(detail.DisplayPlugin))
-
-	if len(detail.SupportModelList) > 0 {
-		fmt.Fprintln(w, "\nModels:")
-		for _, m := range detail.SupportModelList {
-			tag := ""
-			if m.IsDefault {
-				tag = " (default)"
-			}
-			fmt.Fprintf(w, "  - %s%s\n", m.Name, tag)
-		}
-	}
-
-	if len(detail.AppPluginsInfoVos) > 0 {
-		fmt.Fprintln(w, "\nPlugins:")
-		names := make([]string, 0, len(detail.AppPluginsInfoVos))
-		for _, p := range detail.AppPluginsInfoVos {
-			s := p.Name
-			if p.Enabled == "N" {
-				s += " (disabled)"
-			}
-			names = append(names, s)
-		}
-		fmt.Fprintf(w, "  %s\n", strings.Join(names, ", "))
-	}
 
 	return nil
-}
-
-func yesNo(v string) string {
-	if v == "Y" {
-		return "Yes"
-	}
-	return "No"
 }

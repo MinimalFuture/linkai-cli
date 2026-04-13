@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -25,9 +24,6 @@ type FilesOptions struct {
 type KnowledgeFile struct {
 	FileID   string `json:"fileId"`
 	FileName string `json:"fileName"`
-	DataType string `json:"dataType"`
-	Status   string `json:"status"`
-	Total    int    `json:"total"`
 }
 
 type KnowledgeFileListResult struct {
@@ -98,15 +94,14 @@ func filesRun(opts *FilesOptions) error {
 		return nil
 	}
 
-	headers := []string{"FILE ID", "FILE NAME", "TYPE", "STATUS", "CHUNKS"}
+	headers := []string{"FILE ID", "FILE NAME"}
 	rows := make([][]string, 0, len(result.List))
 	for _, f := range result.List {
 		name := string([]rune(f.FileName))
-		runes := []rune(name)
-		if len(runes) > 40 {
+		if runes := []rune(name); len(runes) > 40 {
 			name = string(runes[:40]) + "..."
 		}
-		rows = append(rows, []string{f.FileID, name, f.DataType, f.Status, strconv.Itoa(f.Total)})
+		rows = append(rows, []string{f.FileID, name})
 	}
 	output.PrintTable(opts.Factory.IOStreams.Out, headers, rows)
 

@@ -24,12 +24,8 @@ type ListOptions struct {
 
 // AppItem represents a single application in the list response.
 type AppItem struct {
-	ID          int64  `json:"id"`
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Description string `json:"description"`
-	UsageCount  int    `json:"usageCount"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 // PageResult represents the PageInfo response from the backend.
@@ -102,15 +98,10 @@ func listRun(opts *ListOptions) error {
 		return nil
 	}
 
-	headers := []string{"CODE", "NAME", "TYPE", "DESCRIPTION"}
+	headers := []string{"CODE", "NAME"}
 	rows := make([][]string, 0, len(page.List))
 	for _, app := range page.List {
-		desc := app.Description
-		runes := []rune(desc)
-		if len(runes) > 40 {
-			desc = string(runes[:40]) + "..."
-		}
-		rows = append(rows, []string{app.Code, app.Name, app.Type, desc})
+		rows = append(rows, []string{app.Code, app.Name})
 	}
 	output.PrintTable(f.IOStreams.Out, headers, rows)
 

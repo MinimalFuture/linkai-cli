@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -19,12 +20,9 @@ type ListOptions struct {
 }
 
 type ModelItem struct {
-	ModelCode            string `json:"modelCode"`
-	ModelName            string `json:"modelName"`
-	ModelType            string `json:"modelType"`
-	ModelSupplierName    string `json:"modelSupplierName"`
-	ModelSupplierCode    string `json:"modelSupplierCode"`
-	MaxTokens            int    `json:"maxTokens"`
+	ModelCode  string   `json:"modelCode"`
+	ModelTypes []string `json:"modelTypes"`
+	ModelName  string   `json:"modelName"`
 }
 
 func NewCmdModelList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
@@ -85,14 +83,14 @@ func listRun(opts *ListOptions) error {
 		return nil
 	}
 
-	headers := []string{"CODE", "NAME", "TYPE", "SUPPLIER", "MAX TOKENS"}
+	headers := []string{"CODE", "NAME", "TYPES"}
 	rows := make([][]string, 0, len(models))
 	for _, m := range models {
-		maxTok := "-"
-		if m.MaxTokens > 0 {
-			maxTok = fmt.Sprintf("%d", m.MaxTokens)
+		types := "-"
+		if len(m.ModelTypes) > 0 {
+			types = strings.Join(m.ModelTypes, " / ")
 		}
-		rows = append(rows, []string{m.ModelCode, m.ModelName, m.ModelType, m.ModelSupplierName, maxTok})
+		rows = append(rows, []string{m.ModelCode, m.ModelName, types})
 	}
 	output.PrintTable(opts.Factory.IOStreams.Out, headers, rows)
 	fmt.Fprintf(opts.Factory.IOStreams.ErrOut, "\nTotal: %d\n", len(models))
