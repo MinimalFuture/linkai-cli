@@ -2,6 +2,7 @@ package score
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -206,6 +207,11 @@ func agentOutput(opts *BuyOptions, orderNo, codeURL, productID string) error {
 		"pay_channel": opts.PayChannel,
 		"code_url":    codeURL,
 		"status":      "INIT",
+	}
+	if codeURL != "" {
+		if png, err := qrcode.Encode(codeURL, qrcode.Medium, 300); err == nil {
+			result["qr_base64"] = base64.StdEncoding.EncodeToString(png)
+		}
 	}
 	return output.PrintJSON(opts.Factory.IOStreams.Out, result)
 }
