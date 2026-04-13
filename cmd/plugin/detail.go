@@ -19,15 +19,12 @@ type DetailOptions struct {
 }
 
 type PluginDetail struct {
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	ShortDesc   string `json:"shortDesc"`
-	Desc        string `json:"desc"`
-	Intro       string `json:"intro"`
-	Category    string `json:"category"`
-	ChargeType  string `json:"chargeType"`
-	ChargeDetail string `json:"chargeDetail"`
-	NickName    string `json:"nickName"`
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+	ShortDesc string `json:"shortDesc"`
+	Desc      string `json:"desc"`
+	Intro     string `json:"intro"`
+	ExtParam  string `json:"extParam"`
 }
 
 func NewCmdPluginDetail(f *cmdutil.Factory, runF func(*DetailOptions) error) *cobra.Command {
@@ -81,10 +78,6 @@ func detailRun(opts *DetailOptions) error {
 	w := opts.Factory.IOStreams.Out
 	fmt.Fprintf(w, "Name:     %s\n", detail.Name)
 	fmt.Fprintf(w, "Code:     %s\n", detail.Code)
-	fmt.Fprintf(w, "Category: %s\n", detail.Category)
-	if detail.NickName != "" {
-		fmt.Fprintf(w, "Author:   %s\n", detail.NickName)
-	}
 	if detail.ShortDesc != "" {
 		fmt.Fprintf(w, "Summary:  %s\n", detail.ShortDesc)
 	}
@@ -94,12 +87,8 @@ func detailRun(opts *DetailOptions) error {
 	if detail.Intro != "" {
 		fmt.Fprintf(w, "\n%s\n", detail.Intro)
 	}
-	if detail.ChargeType != "" {
-		fmt.Fprintf(w, "\nCharge:   %s", detail.ChargeType)
-		if detail.ChargeDetail != "" {
-			fmt.Fprintf(w, "  (%s)", detail.ChargeDetail)
-		}
-		fmt.Fprintln(w)
+	if detail.ExtParam != "" {
+		fmt.Fprintf(w, "\nExtParam: %s\n", detail.ExtParam)
 	}
 
 	return nil
