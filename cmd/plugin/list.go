@@ -9,6 +9,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type ListOptions struct {
@@ -33,7 +34,7 @@ func NewCmdPluginList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.
 		Use:   "list",
 		Short: "List available plugins",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "plugin:read",
+			permission.RequiredKey: permission.PluginRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

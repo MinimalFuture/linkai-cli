@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type ListOptions struct {
@@ -36,7 +37,7 @@ func NewCmdDatabaseList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobr
 		Use:   "list",
 		Short: "List databases",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "db:read",
+			permission.RequiredKey: permission.DBRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

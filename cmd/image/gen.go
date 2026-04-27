@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type GenOptions struct {
@@ -32,7 +33,7 @@ func NewCmdImageGen(f *cmdutil.Factory, runF func(*GenOptions) error) *cobra.Com
 		Short: "Generate an image from a text prompt",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "image:write",
+			permission.RequiredKey: permission.ImageGen.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

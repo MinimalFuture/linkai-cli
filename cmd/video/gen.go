@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type VideoGenOptions struct {
@@ -42,7 +43,7 @@ The CLI automatically polls for completion and prints the video URL when ready.
 Generation typically takes 30s–3 minutes depending on the model.`,
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "video:write",
+			permission.RequiredKey: permission.VideoGen.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

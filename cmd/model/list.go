@@ -9,6 +9,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type ListOptions struct {
@@ -32,7 +33,7 @@ func NewCmdModelList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.C
 		Use:   "list",
 		Short: "List available AI models",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "app:read",
+			permission.RequiredKey: permission.AppRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

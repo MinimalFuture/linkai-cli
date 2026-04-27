@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type SpeechOptions struct {
@@ -35,7 +36,7 @@ func NewCmdAudioSpeech(f *cmdutil.Factory, runF func(*SpeechOptions) error) *cob
 		Short: "Generate speech audio from text (TTS)",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "audio:write",
+			permission.RequiredKey: permission.AudioGen.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

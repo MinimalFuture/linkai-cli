@@ -16,6 +16,7 @@ import (
 	"github.com/MinimalFuture/linkai-cli/internal/api"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 const (
@@ -62,7 +63,7 @@ func NewCmdScoreBuy(f *cmdutil.Factory, runF func(*BuyOptions) error) *cobra.Com
 		Use:   "buy",
 		Short: "Purchase credits",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "score:write",
+			permission.RequiredKey: permission.ScoreBuy.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

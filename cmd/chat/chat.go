@@ -12,6 +12,7 @@ import (
 	"github.com/MinimalFuture/linkai-cli/internal/api"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type ChatOptions struct {
@@ -48,7 +49,7 @@ func NewCmdChat(f *cmdutil.Factory, runF func(*ChatOptions) error) *cobra.Comman
 		Short: "Chat with an application",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "chat:write",
+			permission.RequiredKey: permission.ChatSend.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

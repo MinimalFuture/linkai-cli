@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type DescribeOptions struct {
@@ -38,7 +39,7 @@ func NewCmdDatabaseDescribe(f *cmdutil.Factory, runF func(*DescribeOptions) erro
 		Short: "Show table structure",
 		Args:  cobra.ExactArgs(2),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "db:read",
+			permission.RequiredKey: permission.DBRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

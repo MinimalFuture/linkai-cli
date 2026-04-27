@@ -9,6 +9,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type RunOptions struct {
@@ -34,7 +35,7 @@ func NewCmdWorkflowRun(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.
 		Short: "Run a workflow",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "workflow:run",
+			permission.RequiredKey: permission.WorkflowRun.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

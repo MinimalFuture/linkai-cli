@@ -8,6 +8,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type ListOptions struct {
@@ -29,7 +30,7 @@ func NewCmdWorkflowList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobr
 		Use:   "list",
 		Short: "List workflows",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "workflow:read",
+			permission.RequiredKey: permission.WorkflowRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

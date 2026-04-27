@@ -9,6 +9,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type OrderOptions struct {
@@ -26,7 +27,7 @@ func NewCmdScoreOrder(f *cmdutil.Factory, runF func(*OrderOptions) error) *cobra
 		Short: "Get order status by order number",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "score:read",
+			permission.RequiredKey: permission.ScoreRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

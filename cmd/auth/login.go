@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -13,6 +12,7 @@ import (
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/config"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 // LoginOptions holds all inputs for auth login.
@@ -51,7 +51,7 @@ verification URL from its output. Use --no-wait to get the URL immediately.`,
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "structured JSON output")
 	cmd.Flags().BoolVar(&opts.NoWait, "no-wait", false, "initiate device authorization and return immediately; use --device-code to complete")
 	cmd.Flags().StringVar(&opts.DeviceCode, "device-code", "", "poll and complete authorization with a device code from a previous --no-wait call")
-	cmd.Flags().StringVar(&opts.Scope, "scope", cmdutil.DefaultReadScopes, "space-separated list of requested permission scopes")
+	cmd.Flags().StringVar(&opts.Scope, "scope", permission.Defaults(), "space-separated list of requested permission scopes")
 
 	return cmd
 }
@@ -78,7 +78,7 @@ func loginRun(opts *LoginOptions) error {
 	// Already logged in? Skip Device Flow unless the user is requesting new scopes.
 	if existing := auth.GetStoredToken(); existing != nil {
 		status := auth.TokenStatus(existing)
-		if (status == "valid" || status == "needs_refresh") && scopesCovered(opts.Scope, existing.Scope) {
+		if (status == "valid" || status == "needs_refresh") && permission.Covered(opts.Scope, existing.Scope) {
 			userName := ""
 			if cfg.User != nil {
 				userName = cfg.User.UserName
@@ -193,21 +193,6 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	}
 
 	return saveLoginResult(opts, cfg, result.Token)
-}
-
-// scopesCovered reports whether all scopes in requested are present in granted.
-// Both are space-separated scope strings.
-func scopesCovered(requested, granted string) bool {
-	grantedSet := make(map[string]struct{})
-	for _, s := range strings.Fields(granted) {
-		grantedSet[s] = struct{}{}
-	}
-	for _, s := range strings.Fields(requested) {
-		if _, ok := grantedSet[s]; !ok {
-			return false
-		}
-	}
-	return true
 }
 
 // rebaseURL replaces the scheme and host of rawURL with those from base,

@@ -10,6 +10,7 @@ import (
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 	"github.com/MinimalFuture/linkai-cli/internal/validate"
 )
 
@@ -38,11 +39,12 @@ func NewCmdDatabaseExec(f *cmdutil.Factory, runF func(*ExecOptions) error) *cobr
 		Short: "Execute SQL against a database",
 		Long: `Execute a SQL statement against a database.
 
-SELECT queries require the db:read scope.
-Write operations (INSERT/UPDATE/DELETE) require the db:write scope.`,
+SELECT queries require the db:read permission.
+Write operations (INSERT/UPDATE/DELETE) additionally require db:write,
+checked at runtime once the SQL has been classified.`,
 		Args: cobra.ExactArgs(2),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "db:read",
+			permission.RequiredKey: permission.DBRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()
@@ -94,11 +96,11 @@ func execRun(opts *ExecOptions) error {
 		return output.ErrValidation("dangerous SQL operation detected: DROP/TRUNCATE/ALTER are not allowed via CLI")
 	}
 
-	// Client-side scope pre-check for mutating SQL so the user gets the normal
-	// re-login hint before the request is even sent.
+	// Client-side permission pre-check for mutating SQL so the user gets the
+	// normal re-login hint before the request is even sent.
 	if isMutatingSQL(opts.SQL) {
 		token := auth.GetStoredToken()
-		if err := cmdutil.CheckScope(token, "db:write"); err != nil {
+		if err := permission.Check(token, permission.DBWrite); err != nil {
 			return err
 		}
 	}

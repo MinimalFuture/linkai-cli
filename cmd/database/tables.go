@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type TablesOptions struct {
@@ -34,7 +35,7 @@ func NewCmdDatabaseTables(f *cmdutil.Factory, runF func(*TablesOptions) error) *
 		Short: "List tables in a database",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "db:read",
+			permission.RequiredKey: permission.DBRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

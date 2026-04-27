@@ -8,6 +8,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 // InfoOptions holds all inputs for account info.
@@ -33,7 +34,7 @@ func NewCmdAccountInfo(f *cmdutil.Factory, runF func(*InfoOptions) error) *cobra
 		Short: "Show account information",
 		Long:  "Display the current user's name, remaining credits, and plan version.",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "user:read",
+			permission.RequiredKey: permission.UserRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

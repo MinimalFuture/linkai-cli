@@ -9,6 +9,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type DetailOptions struct {
@@ -35,7 +36,7 @@ func NewCmdPluginDetail(f *cmdutil.Factory, runF func(*DetailOptions) error) *co
 		Short: "Show plugin detail",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "plugin:read",
+			permission.RequiredKey: permission.PluginRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

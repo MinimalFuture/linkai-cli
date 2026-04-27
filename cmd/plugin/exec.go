@@ -9,6 +9,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type ExecOptions struct {
@@ -28,7 +29,7 @@ func NewCmdPluginExec(f *cmdutil.Factory, runF func(*ExecOptions) error) *cobra.
 		Short: "Execute a plugin",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "plugin:run",
+			permission.RequiredKey: permission.PluginRun.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

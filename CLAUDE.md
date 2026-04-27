@@ -39,7 +39,7 @@ This is a Go CLI for the LinkAI platform.
 
 ```
 main.go                           → calls cmd.Execute(), returns exit code
-cmd/root.go                       → root cobra command, PersistentPreRunE scope check, registers subcommands
+cmd/root.go                       → root cobra command, PersistentPreRunE permission check, registers subcommands
 cmd/auth/                         → auth subcommands (login/logout/status)
 cmd/app/                          → app subcommands (list/detail)
 cmd/account/                      → account subcommands (info)
@@ -65,8 +65,8 @@ cmd/completion/completion.go      → shell completion generation (bash/zsh/fish
 internal/config/config.go         → config + device_id at ~/.linkai/config.json
 internal/cmdutil/factory.go       → dependency injection (Config, HttpClient, IOStreams, APIClient, auto token refresh)
 internal/cmdutil/iostreams.go     → In/Out/ErrOut/IsTerminal abstraction
-internal/cmdutil/scope.go         → fine-grained scope checking (HasScope, CheckScope)
 internal/cmdutil/transport.go     → retry transport (exponential backoff on 502/503/504)
+internal/permission/permission.go → typed Permission constants, RequiredKey annotation, Check/Has/Covered/Merge/Defaults
 ```
 
 ### Auth flow (Device Flow)
@@ -89,42 +89,56 @@ Supports `--no-wait` (print URL + device_code, return immediately) and `--device
 - **Auto-refresh**: `factory.go` calls `RefreshAccessToken()` when status is `needs_refresh`, updates the stored token on disk, and falls back to the current (still valid) token if refresh fails
 - **Server-side revoke**: `linkai auth logout` calls `POST /api/cli/auth/revoke` before deleting local token files, ensuring leaked tokens cannot be reused
 
-### Fine-grained scope / permission system
+### Permission system (`internal/permission`)
 
-Scopes follow the pattern `{resource}:{action}` (e.g. `app:read`, `app:write`, `workflow:delete`).
+Permissions follow the pattern `{resource}:{action}`. The action verb matches the
+command's intent (`chat:send`, `image:gen`, `score:buy`) rather than an
+overloaded `:write`. The wire format keeps the OAuth term *scope* — the
+`StoredToken.Scope` field, the `--scope` CLI flag, and server parameters all
+remain unchanged.
 
-Default scope on login: `app:read chat:read user:read workflow:read knowledge:read`
+Default permissions requested on login (see `permission.Defaults()`):
+`app:read chat:send user:read workflow:read workflow:run knowledge:read db:read image:gen video:gen audio:gen plugin:read plugin:run score:read score:buy`
 
-Write/delete scopes require explicit authorization via `--scope` flag or re-login.
+Sensitive actions (`db:write`, `knowledge:create`, `knowledge:delete`) are
+omitted from the default set and must be requested explicitly via
+`--scope` on `linkai auth login`.
 
-Full scope list:
+Full permission list:
 
-| Scope | Commands |
-|-------|---------|
-| `app:read` | `app list/detail` |
-| `user:read` | `account info` |
-| `chat:write` | `chat` |
-| `knowledge:read` | `knowledge list/files/search` |
-| `knowledge:write` | `knowledge create` |
-| `knowledge:delete` | `knowledge delete` |
-| `db:read` | `database list/tables/describe/exec` (SELECT) |
-| `db:write` | `database exec` (INSERT/UPDATE/DELETE) — checked server-side |
-| `image:write` | `image gen` |
-| `video:write` | `video gen` |
-| `audio:write` | `audio speech` |
-| `plugin:read` | `plugin list/detail` |
-| `plugin:run` | `plugin exec` |
-| `workflow:read` | `workflow list` |
-| `workflow:run` | `workflow run` |
-| `score:read` | `score list/orders` |
-| `score:write` | `score buy` |
+| Permission | Constant | Commands |
+|---|---|---|
+| `app:read` | `permission.AppRead` | `app list/detail`, `model list` |
+| `user:read` | `permission.UserRead` | `account info` |
+| `chat:send` | `permission.ChatSend` | `chat` |
+| `knowledge:read` | `permission.KnowledgeRead` | `knowledge list/files/search` |
+| `knowledge:create` | `permission.KnowledgeCreate` | `knowledge create` |
+| `knowledge:delete` | `permission.KnowledgeDelete` | `knowledge delete` |
+| `db:read` | `permission.DBRead` | `database list/tables/describe/exec` (SELECT) |
+| `db:write` | `permission.DBWrite` | `database exec` (INSERT/UPDATE/DELETE — runtime check) |
+| `image:gen` | `permission.ImageGen` | `image gen` |
+| `video:gen` | `permission.VideoGen` | `video gen` |
+| `audio:gen` | `permission.AudioGen` | `audio speech` |
+| `plugin:read` | `permission.PluginRead` | `plugin list/detail` |
+| `plugin:run` | `permission.PluginRun` | `plugin exec` |
+| `workflow:read` | `permission.WorkflowRead` | `workflow list` |
+| `workflow:run` | `permission.WorkflowRun` | `workflow run` |
+| `score:read` | `permission.ScoreRead` | `score list/order/orders` |
+| `score:buy` | `permission.ScoreBuy` | `score buy` |
 
-Commands declare their required scope via a Cobra annotation:
+Commands declare their required permission via a Cobra annotation referencing
+a typed constant:
+
 ```go
-cmd.Annotations = map[string]string{cmdutil.RequiredScopeKey: "app:write"}
+cmd.Annotations = map[string]string{
+    permission.RequiredKey: permission.AppRead.String(),
+}
 ```
 
-`PersistentPreRunE` in `cmd/root.go` enforces this automatically before every command runs.
+`PersistentPreRunE` in `cmd/root.go` reads the annotation and calls
+`permission.Check(token, p)` before every command runs. `database/exec` is the
+one command that also runs a runtime `permission.Check(token, permission.DBWrite)`
+once the SQL is classified as mutating.
 
 ### API client (`internal/api/client.go`)
 
@@ -190,7 +204,7 @@ Follow the pattern in `cmd/database/` or `cmd/image/`:
 - Define an `Options` struct with a `Factory` field
 - `NewCmdXxx(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command` — `runF` allows test injection
 - Register in `cmd/root.go` via `rootCmd.AddCommand(...)`
-- Declare required scope: `cmd.Annotations = map[string]string{cmdutil.RequiredScopeKey: "resource:action"}`
+- Declare required permission: `cmd.Annotations = map[string]string{permission.RequiredKey: permission.<Const>.String()}` (define a new constant in `internal/permission/permission.go` if the action does not exist yet)
 - Use `f.APIClient()` for authenticated requests, `f.IOStreams` for output
 - Use `output.PrintJSON` / `output.PrintTable` for formatted output
 - For write commands: support `--dry-run` with `output.PrintDryRun()` to show the request without sending
@@ -213,7 +227,7 @@ go test ./...
 
 Key test files:
 - `internal/auth/token_store_test.go` — TokenStatus states + MaskToken
-- `internal/cmdutil/scope_test.go` — HasScope + CheckScope
+- `internal/permission/permission_test.go` — Has + Check + Covered + Merge + Defaults
 - `internal/api/client_test.go` — JSON envelope, non-JSON errors, API error codes, stream errors
 - `internal/cmdutil/transport_test.go` — retry behavior, backoff, exhaustion
 

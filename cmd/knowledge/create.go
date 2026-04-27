@@ -8,6 +8,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type CreateOptions struct {
@@ -26,7 +27,7 @@ func NewCmdKnowledgeCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) 
 		Use:   "create",
 		Short: "Create a knowledge base",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "knowledge:write",
+			permission.RequiredKey: permission.KnowledgeCreate.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

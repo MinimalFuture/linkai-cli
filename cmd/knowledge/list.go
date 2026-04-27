@@ -8,6 +8,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type ListOptions struct {
@@ -33,7 +34,7 @@ func NewCmdKnowledgeList(f *cmdutil.Factory, runF func(*ListOptions) error) *cob
 		Use:   "list",
 		Short: "List knowledge bases",
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "knowledge:read",
+			permission.RequiredKey: permission.KnowledgeRead.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

@@ -20,6 +20,7 @@ import (
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 // version and buildDate are set via ldflags at build time.
@@ -45,12 +46,12 @@ func Execute() int {
 	rootCmd.SilenceErrors = true
 
 	// PersistentPreRunE runs before every subcommand.
-	// It silences usage on error and enforces scope-based permission checks.
+	// It silences usage on error and enforces declared permission checks.
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		requiredScope, hasScope := cmd.Annotations[cmdutil.RequiredScopeKey]
-		if !hasScope {
+		required, ok := cmd.Annotations[permission.RequiredKey]
+		if !ok {
 			return nil
 		}
 
@@ -58,7 +59,7 @@ func Execute() int {
 		if token == nil {
 			return output.ErrAuth("not logged in: run 'linkai auth login'")
 		}
-		return cmdutil.CheckScope(token, requiredScope)
+		return permission.Check(token, permission.Permission(required))
 	}
 
 	rootCmd.AddCommand(completionCmd.NewCmdCompletion())

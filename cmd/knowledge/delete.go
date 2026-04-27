@@ -8,6 +8,7 @@ import (
 
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
+	"github.com/MinimalFuture/linkai-cli/internal/permission"
 )
 
 type DeleteOptions struct {
@@ -26,7 +27,7 @@ func NewCmdKnowledgeDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) 
 		Short: "Delete a knowledge base",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			cmdutil.RequiredScopeKey: "knowledge:delete",
+			permission.RequiredKey: permission.KnowledgeDelete.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()

@@ -35,7 +35,7 @@ linkai auth login
 命令会打印一个授权 URL，在浏览器中打开并完成登录，CLI 自动完成授权。
 
 ```
-Requesting authorization with scope: app:read chat:read user:read workflow:read knowledge:read
+Requesting authorization with scope: app:read chat:send user:read workflow:read workflow:run knowledge:read db:read image:gen video:gen audio:gen plugin:read plugin:run score:read score:buy
 Open the following URL in your browser to authorize:
   https://app.link-ai.tech/cli-login?code=xxxxxx
 
@@ -66,7 +66,7 @@ linkai auth logout
 
 ```bash
 linkai auth login                          # 登录（Device Flow）
-linkai auth login --scope "db:read db:write image:write video:write audio:write"
+linkai auth login --scope "db:read db:write knowledge:create knowledge:delete"
 linkai auth logout                         # 登出（同时吊销服务端 token）
 linkai auth status                         # 查看当前登录状态
 ```
@@ -87,7 +87,7 @@ linkai app list --json                     # JSON 输出
 linkai app detail <code>                   # 查看应用详情（配置、模型、插件）
 ```
 
-### chat — 对话（需要 `chat:write` scope）
+### chat — 对话（需要 `chat:send` 权限）
 
 ```bash
 linkai chat "你好" --app <app_code>                       # 单轮对话（流式输出）
@@ -107,7 +107,7 @@ linkai knowledge files <code>              # 列出知识库文件
 linkai knowledge search <code> <query>     # 向量搜索
 ```
 
-### database — 数据库（需要 `db:read` scope）
+### database — 数据库（需要 `db:read` 权限；写操作需 `db:write`）
 
 ```bash
 linkai database list                       # 列出数据库连接
@@ -123,7 +123,7 @@ linkai model list                          # 列出可用模型
 linkai model list --json
 ```
 
-### image — 图片生成（需要 `image:write` scope）
+### image — 图片生成（需要 `image:gen` 权限）
 
 ```bash
 linkai image gen "a cat on the moon"
@@ -133,7 +133,7 @@ linkai image gen "portrait" --aspect-ratio 9:16 --json
 
 输出图片 CDN URL，可直接在浏览器中打开。
 
-### video — 视频生成（需要 `video:write` scope）
+### video — 视频生成（需要 `video:gen` 权限）
 
 ```bash
 linkai video gen "ocean waves at sunset"
@@ -143,7 +143,7 @@ linkai video gen "a flying bird" --model jimeng_t2v_v30 --json
 
 CLI 自动轮询等待生成完成（约 30s–3min），完成后输出视频 URL。
 
-### audio — 语音合成（需要 `audio:write` scope）
+### audio — 语音合成（需要 `audio:gen` 权限）
 
 ```bash
 linkai audio speech "Hello, welcome to LinkAI"
@@ -151,7 +151,7 @@ linkai audio speech "你好，欢迎使用 LinkAI" --output hello.mp3   # 下载
 linkai audio speech "Test" --model tts-1-hd --voice alloy --json
 ```
 
-### plugin — 插件（需要 `plugin:read` / `plugin:run` scope）
+### plugin — 插件（需要 `plugin:read` / `plugin:run` 权限）
 
 ```bash
 linkai plugin list                                # 列出可用插件
@@ -161,7 +161,7 @@ linkai plugin exec <code> --input "查询内容"      # 执行插件
 linkai plugin exec <code> --arg key1=val1 --arg key2=val2  # 带结构化参数
 ```
 
-### workflow — 工作流（需要 `workflow:read` / `workflow:run` scope）
+### workflow — 工作流（需要 `workflow:read` / `workflow:run` 权限）
 
 ```bash
 linkai workflow list                                        # 列出工作流
@@ -170,7 +170,7 @@ linkai workflow run <app_code> --input "text" --arg k=v     # 带额外参数
 linkai workflow run <app_code> --input "text" --session <id> # 多轮会话
 ```
 
-### score — 积分管理（需要 `score:read` / `score:write` scope）
+### score — 积分管理（需要 `score:read` / `score:buy` 权限）
 
 ```bash
 linkai score list                          # 查看积分套餐
@@ -193,45 +193,41 @@ linkai score orders --page 2 --page-size 20
 
 ---
 
-## 权限（Scope）
+## 权限
 
-登录时通过 `--scope` 指定权限范围，权限精确到每个资源的操作级别。
+登录时通过 `--scope` 指定权限范围，权限精确到每个资源的操作级别。命令行 flag 沿用 OAuth 标准术语 `--scope`，但权限字符串本身按 `资源:动作` 命名，动作词与命令语义对齐（`chat:send`、`image:gen`、`score:buy`）。
 
-| Scope | 说明 | 默认授予 |
-|-------|------|---------|
+| 权限 | 说明 | 默认授予 |
+|------|------|---------|
 | `app:read` | 查询应用列表、详情 | ✅ |
-| `chat:read` | 查询对话记录 | ✅ |
 | `user:read` | 查询用户信息 | ✅ |
-| `workflow:read` | 查询工作流 | ✅ |
+| `chat:send` | 与应用对话 | ✅ |
 | `knowledge:read` | 查询知识库 | ✅ |
-| `chat:write` | 与应用对话 | ❌ |
-| `knowledge:write` | 创建/编辑知识库 | ❌ |
+| `db:read` | 查询数据库/表/执行 SELECT | ✅ |
+| `image:gen` | 生成图片 | ✅ |
+| `video:gen` | 生成视频 | ✅ |
+| `audio:gen` | 语音合成（TTS） | ✅ |
+| `plugin:read` | 查询插件列表、详情 | ✅ |
+| `plugin:run` | 执行插件 | ✅ |
+| `workflow:read` | 查询工作流 | ✅ |
+| `workflow:run` | 执行工作流 | ✅ |
+| `score:read` | 查看积分套餐、购买历史 | ✅ |
+| `score:buy` | 购买积分 | ✅ |
+| `knowledge:create` | 创建知识库 | ❌ |
 | `knowledge:delete` | 删除知识库 | ❌ |
-| `db:read` | 查询数据库/表/执行 SELECT | ❌ |
 | `db:write` | 执行写操作（INSERT/UPDATE/DELETE） | ❌ |
-| `image:write` | 生成图片 | ❌ |
-| `video:write` | 生成视频 | ❌ |
-| `audio:write` | 语音合成（TTS） | ❌ |
-| `plugin:read` | 查询插件列表、详情 | ❌ |
-| `plugin:run` | 执行插件 | ❌ |
-| `workflow:run` | 执行工作流 | ❌ |
-| `score:read` | 查看积分套餐、购买历史 | ❌ |
-| `score:write` | 购买积分 | ❌ |
 
 需要额外权限时重新授权：
 
 ```bash
-# 对话 + 数据库读写
-linkai auth login --scope "chat:write db:read db:write"
+# 数据库写操作
+linkai auth login --scope "db:read db:write"
 
-# 内容生成
-linkai auth login --scope "image:write video:write audio:write"
-
-# 插件 + 工作流
-linkai auth login --scope "plugin:read plugin:run workflow:run"
+# 知识库管理
+linkai auth login --scope "knowledge:read knowledge:create knowledge:delete"
 
 # 一次性获取所有权限
-linkai auth login --scope "app:read chat:read chat:write user:read workflow:read workflow:run knowledge:read knowledge:write knowledge:delete db:read db:write image:write video:write audio:write plugin:read plugin:run score:read score:write"
+linkai auth login --scope "app:read user:read chat:send knowledge:read knowledge:create knowledge:delete db:read db:write image:gen video:gen audio:gen plugin:read plugin:run workflow:read workflow:run score:read score:buy"
 ```
 
 ---
@@ -288,13 +284,13 @@ make clean               # 清理构建产物
 
 ### 添加新命令
 
-参考 `cmd/database/` 或 `cmd/image/` 的结构：
+参考 `cmd/database/` 或 `cmd/image/` 的结构（`permission` 包来自 `github.com/MinimalFuture/linkai-cli/internal/permission`）：
 
 ```go
 func NewCmdXxx(f *cmdutil.Factory, runF func(*XxxOptions) error) *cobra.Command {
     cmd := &cobra.Command{
         Use:         "xxx",
-        Annotations: map[string]string{cmdutil.RequiredScopeKey: "resource:action"},
+        Annotations: map[string]string{permission.RequiredKey: permission.AppRead.String()},
         RunE: func(cmd *cobra.Command, args []string) error {
             client, err := f.APIClient()
             // ...
