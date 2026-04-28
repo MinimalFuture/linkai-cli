@@ -1,136 +1,49 @@
-# Admin (Auth / Account / Credits / Models)
+# Apps / Models / Account / Credits / Auth
 
-Authentication, account info, credits management, and model listing.
+## Apps — scope `app:read`
 
-## Authentication
+| Command | Notes |
+|---|---|
+| `linkai app list [--key <kw>] [--page <n>] [--page-size <n>] [--json]` | search + paginate |
+| `linkai app detail <app_code> [--json]` | full info for one app |
 
-### Login
+## Models — uses default auth
 
-```bash
-linkai auth login
-linkai auth login --scope "app:read chat:write knowledge:read db:read"
+```
+linkai model list [--type LLM|EMBEDDING] [--supplier <name>] [--json]
 ```
 
-Opens a browser URL for authorization. The CLI waits until the user approves.
+## Account — scope `user:read`
 
-Default scope: `app:read chat:read user:read workflow:read knowledge:read`
-
-To request additional permissions (e.g., write/delete), specify `--scope` explicitly.
-
-| Flag | Type | Description |
-|---|---|---|
-| `--scope` | string | Space-separated scopes to request |
-| `--no-wait` | bool | Print URL and device code, return immediately |
-| `--device-code` | string | Resume polling from a prior `--no-wait` call |
-| `--json` | bool | Structured JSON output |
-
-If the user is already logged in with a valid token and the requested scopes are all covered, login is skipped. To upgrade scopes, pass a `--scope` that includes new ones.
-
-### Logout
-
-```bash
-linkai auth logout
+```
+linkai account info [--json]
 ```
 
-Revokes the token server-side and clears local storage.
-
-### Status
-
-```bash
-linkai auth status
-linkai auth status --json
-```
-
-Shows login state, username, token expiry, and granted scopes.
-
-## Account info
-
-```bash
-linkai account info
-linkai account info --json
-```
-
-**Required scope**: `user:read`
-
-Shows the user's name, remaining credits, and plan version.
-
-## Models
-
-```bash
-linkai model list
-linkai model list --type LLM
-linkai model list --supplier openai
-```
-
-**Required scope**: (uses default auth)
-
-| Flag | Type | Description |
-|---|---|---|
-| `--type` | string | Filter by model type (e.g., `LLM`, `EMBEDDING`) |
-| `--supplier` | string | Filter by supplier (e.g., `openai`, `claude`) |
-| `--json` | bool | JSON output |
+Returns `{ name, credits, plan_version, ... }`.
 
 ## Credits / Score
 
-### List credit packages
+| Command | Scope | Agent notes |
+|---|---|---|
+| `linkai score list [--json]` | `score:read` | available credit packages |
+| `linkai score buy --product <id> --pay wechat\|alipay --agent [--json]` | `score:buy` | **always pass `--agent`** to get `qr_base64` instead of ASCII QR |
+| `linkai score order <order_no> [--json]` | `score:read` | poll order status by order number |
+| `linkai score orders [--page <n>] [--page-size <n>] [--json]` | `score:read` | purchase history |
 
-```bash
-linkai score list
-linkai score list --json
-```
+`score buy` returns the QR; once the user pays, poll `score order <order_no>` until status flips to paid.
 
-**Required scope**: `score:read`
+## Auth — agent rules
 
-### Purchase credits
-
-```bash
-linkai score buy
-linkai score buy --product <id> --pay wechat
-linkai score buy --product <id> --pay alipay
-```
-
-**Required scope**: `score:write`
-
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--product` | string | | Product ID (skip interactive selection) |
-| `--pay` | string | `wechat` | Payment channel: `wechat` or `alipay` |
-| `--agent` | bool | | Agent mode: return QR URL instead of ASCII QR |
-| `--json` | bool | | JSON output (agent mode) |
-
-### Purchase history
-
-```bash
-linkai score orders
-linkai score orders --page 2 --page-size 20
-```
-
-**Required scope**: `score:read`
-
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--page` | int | 1 | Page number |
-| `--page-size` | int | 10 | Items per page |
-| `--json` | bool | | JSON output |
-
-## Scope reference
-
-| Scope | Commands |
+| Command | Agent action |
 |---|---|
-| `app:read` | `app list`, `app detail` |
-| `user:read` | `account info` |
-| `chat:write` | `chat` |
-| `knowledge:read` | `knowledge list/files/search` |
-| `knowledge:write` | `knowledge create` |
-| `knowledge:delete` | `knowledge delete` |
-| `db:read` | `database list/tables/describe/exec` (SELECT) |
-| `db:write` | `database exec` (INSERT/UPDATE/DELETE) |
-| `image:write` | `image gen` |
-| `video:write` | `video gen` |
-| `audio:write` | `audio speech` |
-| `plugin:read` | `plugin list/detail` |
-| `plugin:run` | `plugin exec` |
-| `workflow:read` | `workflow list` |
-| `workflow:run` | `workflow run` |
-| `score:read` | `score list/orders` |
-| `score:write` | `score buy` |
+| `linkai auth status [--json]` | run before the first call; expect `valid` |
+| `linkai auth login` | **never run from agent** — needs a browser; tell the user to run it themselves with the right `--scope` |
+| `linkai auth logout` | only on explicit user request |
+
+## Default scopes granted at login
+
+```
+app:read chat:send user:read workflow:read workflow:run knowledge:read db:read image:gen video:gen audio:gen plugin:read plugin:run score:read score:buy
+```
+
+Sensitive scopes **not** in defaults — require explicit user re-login: `db:write`, `knowledge:create`, `knowledge:delete`.

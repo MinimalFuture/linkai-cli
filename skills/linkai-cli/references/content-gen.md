@@ -1,91 +1,36 @@
-# Content Generation (Image / Video / Audio)
+# Image / Video / Audio generation
 
-Generate multimedia content using AI models on the LinkAI platform.
+All three are in default scopes.
 
-## Image generation
+## Image — scope `image:gen`
 
-**Required scope**: `image:write`
-
-```bash
-linkai image gen "<prompt>"
+```
+linkai image gen "<prompt>" [--model <m>] [--size <WxH> | --aspect-ratio <r>] [--json] [--dry-run]
 ```
 
-### Flags
+- Prefer `--aspect-ratio` (e.g. `16:9`, `1:1`) when the model supports it; otherwise use `--size 1024x1024`.
+- Common models: `dall-e-3`, `doubao-seedream-4.5`. Omit `--model` to use the default.
 
-| Flag | Type | Description |
-|---|---|---|
-| `--model` | string | Image model (e.g., `dall-e-3`, `doubao-seedream-4.5`) |
-| `--size` | string | Image size (e.g., `1024x1024`) |
-| `--aspect-ratio` | string | Aspect ratio (e.g., `1:1`, `16:9`) — use instead of `--size` when the model supports it |
-| `--json` | bool | JSON output |
-| `--dry-run` | bool | Print request without executing |
+JSON output: `{ "url": "...", ... }`
 
-### Examples
+## Video — scope `video:gen`
 
-```bash
-linkai image gen "a cat sitting on a cloud"
-linkai image gen "logo design for a coffee shop" --model dall-e-3 --size 1024x1024
-linkai image gen "landscape painting" --aspect-ratio 16:9
+```
+linkai video gen "<prompt>" [--model <m>] [--duration <sec>] [--aspect-ratio <r>] [--mode std|pro] [--json] [--dry-run]
 ```
 
-The response contains the generated image URL.
+- Defaults: `duration=5`, `aspect-ratio=16:9`, `mode=std`.
+- The CLI polls until the task completes (typically 30s–3min). **Do not add your own polling.** Just wait for the command to return.
+- `mode=pro` is slower but higher quality.
 
----
+JSON output: `{ "url": "...", "task_id": "...", ... }`
 
-## Video generation
+## Audio TTS — scope `audio:gen`
 
-**Required scope**: `video:write`
-
-```bash
-linkai video gen "<prompt>"
+```
+linkai audio speech "<text>" [--model tts-1|tts-1-hd] [--voice <id>] [--output <path.mp3>] [--json] [--dry-run]
 ```
 
-The CLI automatically polls for completion and prints the video URL when ready. Generation typically takes 30 seconds to 3 minutes.
-
-### Flags
-
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--model` | string | | Video model (e.g., `jimeng_t2v_v30`) |
-| `--duration` | int | 5 | Video duration in seconds |
-| `--aspect-ratio` | string | `16:9` | Aspect ratio (`16:9`, `9:16`, `1:1`) |
-| `--mode` | string | `std` | Generation mode: `std` (standard) or `pro` (higher quality) |
-| `--json` | bool | | JSON output |
-| `--dry-run` | bool | | Print request without executing |
-
-### Examples
-
-```bash
-linkai video gen "a dolphin jumping out of the ocean"
-linkai video gen "product showcase" --duration 10 --mode pro --aspect-ratio 9:16
-```
-
----
-
-## Audio / Text-to-Speech (TTS)
-
-**Required scope**: `audio:write`
-
-```bash
-linkai audio speech "<text>"
-```
-
-### Flags
-
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--model` | string | `tts-1` | TTS model (`tts-1` or `tts-1-hd`) |
-| `--voice` | string | | Voice type ID |
-| `--output` | string | | Save audio to local file (e.g., `speech.mp3`) |
-| `--json` | bool | | JSON output |
-| `--dry-run` | bool | | Print request without executing |
-
-### Examples
-
-```bash
-linkai audio speech "Hello, welcome to LinkAI"
-linkai audio speech "今天天气真好" --model tts-1-hd --output greeting.mp3
-linkai audio speech "Product introduction" --voice <voice_id> --output intro.mp3
-```
-
-Without `--output`, the response contains the audio URL. With `--output`, the audio file is downloaded and saved locally.
+- Without `--output`: returns `{ "url": "..." }` (CDN URL, time-limited).
+- With `--output <path>`: downloads to disk; the local path is reported.
+- `--model` defaults to `tts-1`; use `tts-1-hd` for higher quality.

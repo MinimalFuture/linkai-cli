@@ -1,50 +1,26 @@
-# Plugin
+# plugin
 
-Browse and execute plugins on the LinkAI platform. Plugins are third-party tools that extend platform capabilities.
+## Scopes
 
-**Required scopes**: `plugin:read` (list/detail), `plugin:run` (exec)
+- `plugin:read` — `list` / `detail` (in default scopes)
+- `plugin:run` — `exec` (in default scopes)
 
-## List plugins
+## Commands
 
-```bash
-linkai plugin list
-linkai plugin list --category "search"    # filter by category
+```
+linkai plugin list [--category <name>] [--json]
+linkai plugin detail <plugin_code> [--json]
+linkai plugin exec <plugin_code> --input "<text>" [--arg key=value ...] [--json]
 ```
 
-Flags:
-- `--category <name>` — filter by category
-- `--json` — JSON output
+## Workflow
 
-## View plugin detail
+1. Have a plugin in mind? Skip to step 3.
+2. `linkai plugin list --json` (optionally `--category`) to discover.
+3. `linkai plugin detail <code> --json` — read expected `input` and `args` shape.
+4. `linkai plugin exec <code> --input "..." --arg k=v --json`.
 
-```bash
-linkai plugin detail <code>
-linkai plugin detail <code> --json
-```
+## Notes
 
-Shows the plugin's description, expected inputs, and parameters.
-
-## Execute a plugin
-
-```bash
-linkai plugin exec <code> --input "<text>"
-linkai plugin exec <code> --input "<text>" --arg key1=value1 --arg key2=value2
-```
-
-- `<code>` — plugin code (from `plugin list`)
-- `--input <text>` — input text for the plugin
-- `--arg key=value` — structured argument, can be repeated
-- `--json` — JSON output
-
-### Example
-
-```bash
-linkai plugin exec web-search --input "latest AI news"
-linkai plugin exec translator --input "Hello world" --arg target_lang=zh
-```
-
-## Typical workflow
-
-1. `linkai plugin list` → browse available plugins
-2. `linkai plugin detail <code>` → check what inputs/args it expects
-3. `linkai plugin exec <code> --input "..." --arg ...` → run it
+- `--arg` is repeatable; each `key=value` is one argument.
+- The shape of the JSON `result` field is plugin-specific — check `detail` first.

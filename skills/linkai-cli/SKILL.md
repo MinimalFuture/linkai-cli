@@ -1,63 +1,44 @@
 ---
 name: linkai-cli
-description: Use the `linkai` CLI to interact with the LinkAI platform. Invoke this skill whenever the user wants to chat with an AI application, search or manage knowledge bases, generate images/video/audio, query databases, run workflows, execute plugins, check account info or credits, or do anything related to LinkAI. If the user's request matches any capability below, use this skill proactively — don't wait for them to say "use linkai".
+description: Invoke LinkAI platform services via the `linkai` CLI — chat with AI apps, RAG search over knowledge bases, generate images/video/audio, query connected databases, run workflows, execute plugins, manage account/credits. Use when the user references "linkai", a LinkAI app, knowledge base (知识库), workflow, plugin, or asks to generate AI content / query a managed database. Optimized for non-interactive agent use (JSON output, no streaming, no interactive prompts).
 ---
 
-# LinkAI CLI
+# LinkAI CLI (agent edition)
 
-`linkai` is a command-line tool for the LinkAI platform. It lets you chat with AI apps, manage knowledge bases, generate multimedia content, query databases, run workflows, call plugins, and manage your account — all from the terminal.
+This skill is optimized for agent invocation, not interactive human use. Default to JSON, non-streaming, non-interactive flags.
 
-## Before you start
+## Agent defaults — always apply
 
-Check login status before running any command:
-
-```bash
-linkai auth status
-```
-
-If not logged in or token expired, have the user run `linkai auth login`. Some commands need extra scopes — if you see a scope error, re-login with the required scope:
-
-```bash
-linkai auth login --scope "app:read chat:write knowledge:read ..."
-```
+| Concern | Default | Reason |
+|---|---|---|
+| Output | append `--json` | machine-parseable |
+| `chat` | add `--no-stream` (unless streaming live to the user) | full reply in one block |
+| `score buy` | add `--agent` | returns `qr_base64`, not ASCII QR |
+| `knowledge delete` | add `--force` | skips confirmation prompt |
+| `auth login` | **never run from agent** | needs a browser; ask the user |
+| Long async tasks | `video gen` polls internally — just wait | don't re-poll |
 
 ## Capability map
 
-Use this table to decide which command to use. Once you've identified the right domain, read the corresponding reference file for full flag details and usage patterns.
-
-| User intent | Command | Reference |
+| Intent | Command | Reference |
 |---|---|---|
-| Talk to an AI app, ask questions, get completions | `linkai chat` | [chat.md](references/chat.md) |
-| Search documents, manage knowledge bases | `linkai knowledge ...` | [knowledge.md](references/knowledge.md) |
-| Generate images | `linkai image gen` | [content-gen.md](references/content-gen.md) |
-| Generate videos | `linkai video gen` | [content-gen.md](references/content-gen.md) |
-| Text-to-speech / generate audio | `linkai audio speech` | [content-gen.md](references/content-gen.md) |
-| Query or explore databases | `linkai database ...` | [database.md](references/database.md) |
-| Execute a third-party plugin | `linkai plugin ...` | [plugin.md](references/plugin.md) |
-| Run an automated workflow / pipeline | `linkai workflow ...` | [workflow.md](references/workflow.md) |
-| Check account, credits, models, login/logout | `linkai account/auth/score/model ...` | [admin.md](references/admin.md) |
+| Chat with an AI app | `linkai chat` | [chat.md](references/chat.md) |
+| Knowledge base (list/files/search/create/delete) | `linkai knowledge ...` | [knowledge.md](references/knowledge.md) |
+| Image / Video / Audio generation | `linkai image gen` / `video gen` / `audio speech` | [content-gen.md](references/content-gen.md) |
+| Database query | `linkai database ...` | [database.md](references/database.md) |
+| Plugin | `linkai plugin ...` | [plugin.md](references/plugin.md) |
+| Workflow | `linkai workflow ...` | [workflow.md](references/workflow.md) |
+| App / Model / Account / Credits | `linkai app/model/account/score ...` | [admin.md](references/admin.md) |
+| Exit codes & scope recovery | — | [errors.md](references/errors.md) |
 
-## Workflow: how to fulfill a request
+## Decision flow
 
-1. **Identify the domain** from the capability map above.
-2. **Read the reference file** for that domain — it has the exact syntax, all flags, and common patterns.
-3. **Resolve missing arguments**: if a command needs an app code, knowledge base code, or database code that the user didn't provide, list the available resources first (e.g., `linkai app list`) and let them pick.
-4. **Run the command** and present the result.
-5. **Handle errors**: show the error and suggest a fix. Common issues:
-   - `scope` error → re-login with the right scope
-   - `not logged in` → run `linkai auth login`
-   - network/5xx → retry once, then report
+1. Pick the command from the capability map.
+2. Open the matching reference for required flags and JSON output fields.
+3. Resolve missing IDs (`app_code`, `kb_code`, `db_code`, `plugin_code`) by listing first with `--json`. Don't guess codes.
+4. Run with `--json`. Parse the result; surface only what the user needs.
+5. On non-zero exit, classify via [errors.md](references/errors.md). For scope errors, **stop and ask the user to re-login** — do not retry.
 
-## Output guidelines
+## Pre-flight
 
-- **Lists**: summarize key fields (name, code, status). Don't dump raw JSON unless the user asks.
-- **Generated content** (image/video/audio URL): display the URL prominently. If saved to a local file, tell the user the path.
-- **Chat / streaming**: let the output stream naturally.
-- **Errors**: show the message and suggest the fix.
-
-## Common flags
-
-Most commands support these:
-- `--json` — output raw JSON (useful for piping or debugging)
-- `--dry-run` — print the HTTP request without executing (write commands only)
-- `--page` / `--page-size` — pagination for list commands
+Before the first LinkAI call in a session, verify auth: `linkai auth status --json`. If status is not `valid`, ask the user to run `linkai auth login` themselves.

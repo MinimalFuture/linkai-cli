@@ -1,54 +1,29 @@
-# Database
+# database
 
-Query and explore databases connected to the LinkAI platform.
+## Scopes
 
-**Required scopes**: `db:read` (list/tables/describe/SELECT), `db:write` (INSERT/UPDATE/DELETE — enforced server-side)
+- `db:read` — `list` / `tables` / `describe` / `SELECT` via `exec` (in default scopes)
+- `db:write` — `INSERT/UPDATE/DELETE` via `exec` (**not** in default scopes; classified server-side from the SQL)
 
-## Explore databases
+## Commands
 
-```bash
-linkai database list                          # list all database connections
-linkai database tables <code>                 # list tables in a database
-linkai database describe <code> <table>       # show table structure (columns, types)
-```
+| Command | Purpose |
+|---|---|
+| `linkai database list [--page <n>] [--page-size <n>] [--json]` | list connections |
+| `linkai database tables <db_code> [--json]` | list tables in a connection |
+| `linkai database describe <db_code> <table> [--json]` | columns + types |
+| `linkai database exec <db_code> "<sql>" [--json] [--dry-run]` | run SQL |
 
-All three support `--json` for JSON output. `database list` also supports `--page` / `--page-size`.
+## Safety rules — agent must follow
 
-## Execute SQL
+- **Default to `SELECT`.** Only run mutating SQL when the user explicitly asks.
+- **Always include `LIMIT`** on exploratory selects (e.g. `LIMIT 100`).
+- DDL (`DROP`, `TRUNCATE`, `ALTER`) is blocked client-side. Do not attempt; surface the rejection to the user.
+- Mutating SQL needs `db:write` (not in defaults). On scope failure see [errors.md](errors.md).
 
-```bash
-linkai database exec <code> "<sql>"
-```
+## Discovery flow
 
-- `<code>` — database connection code (from `database list`)
-- `<sql>` — the SQL statement to execute
-
-### Safety
-
-- Default to SELECT queries unless the user explicitly asks for writes.
-- The CLI blocks DDL (DROP, TRUNCATE, ALTER) client-side.
-- INSERT/UPDATE/DELETE require `db:write` scope, which the server checks.
-
-### Examples
-
-```bash
-linkai database exec mydb "SELECT * FROM users LIMIT 10"
-linkai database exec mydb "SELECT count(*) FROM orders WHERE status = 'completed'"
-linkai database exec mydb "INSERT INTO logs (msg) VALUES ('test')"    # needs db:write scope
-```
-
-### Flags
-
-| Flag | Type | Description |
-|---|---|---|
-| `--json` | bool | JSON output |
-| `--dry-run` | bool | Print request without executing |
-
-## Typical workflow
-
-A common pattern for database exploration:
-
-1. `linkai database list` → find the database code
-2. `linkai database tables <code>` → see available tables
-3. `linkai database describe <code> <table>` → understand the schema
-4. `linkai database exec <code> "SELECT ..."` → run the query
+1. `linkai database list --json` → pick `code`.
+2. `linkai database tables <code> --json` → pick table.
+3. `linkai database describe <code> <table> --json` → understand columns.
+4. `linkai database exec <code> "SELECT ... LIMIT N" --json`.

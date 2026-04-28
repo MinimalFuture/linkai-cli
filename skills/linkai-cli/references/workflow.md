@@ -1,44 +1,20 @@
-# Workflow
+# workflow
 
-List and run automated workflows on the LinkAI platform.
+## Scopes
 
-**Required scopes**: `workflow:read` (list), `workflow:run` (run)
+- `workflow:read` — `list` (in default scopes)
+- `workflow:run` — `run` (in default scopes)
 
-## List workflows
+## Commands
 
-```bash
-linkai workflow list
-linkai workflow list --json
+```
+linkai workflow list [--json]
+linkai workflow run <app_code> --input "<text>" [--arg k=v ...] [--session <id>] [--json]
 ```
 
-## Run a workflow
+## Notes
 
-```bash
-linkai workflow run <app_code> --input "<text>"
-```
-
-- `<app_code>` — the workflow's application code (from `workflow list`)
-- `--input <text>` — input text to pass to the workflow
-
-### Flags
-
-| Flag | Type | Description |
-|---|---|---|
-| `--input` | string | Input text (required) |
-| `--arg` | string (repeatable) | Extra argument in `key=value` format |
-| `--session` | string | Session ID for multi-turn workflow |
-| `--json` | bool | JSON output |
-
-### Examples
-
-```bash
-linkai workflow list
-linkai workflow run wf_abc123 --input "Summarize this report"
-linkai workflow run wf_abc123 --input "Process data" --arg format=csv --arg verbose=true
-linkai workflow run wf_abc123 --input "Follow up" --session sess-001    # multi-turn
-```
-
-## Typical workflow
-
-1. `linkai workflow list` → find the workflow code
-2. `linkai workflow run <code> --input "..."` → run it with input
+- `<app_code>` is the workflow's app code; get it from `workflow list --json`.
+- `--input` is required.
+- `--arg` is repeatable for extra parameters the workflow expects.
+- `--session <id>` enables multi-turn workflow context — pass the same id across calls.
