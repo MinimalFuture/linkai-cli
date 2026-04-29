@@ -161,7 +161,7 @@ func resolveOrder(opts *BuyOptions, client *api.Client, productID string) (strin
 					case "INIT":
 						fmt.Fprintf(opts.Factory.IOStreams.ErrOut, "Reusing existing pending order %s\n", po.OrderNo)
 						return po.OrderNo, po.CodeURL, nil
-					case "PAID", "FAILED", "REFUND", "CANCELLED":
+					case "PAID", "FAILED", "REFUND", "CANCELED":
 						// Terminal state: safe to clear the cache and create a new order
 						_ = removePendingOrder()
 					}
@@ -237,7 +237,7 @@ func humanFlow(opts *BuyOptions, client *api.Client, orderNo, codeURL string) er
 		select {
 		case <-time.After(pollInterval):
 		case <-opts.Ctx.Done():
-			return fmt.Errorf("cancelled — order %s still pending", orderNo)
+			return fmt.Errorf("canceled — order %s still pending", orderNo)
 		}
 
 		params := url.Values{}

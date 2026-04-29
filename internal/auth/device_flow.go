@@ -125,13 +125,13 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 	for time.Now().Before(deadline) && attempts < maxPollAttempts {
 		attempts++
 		if ctx.Err() != nil {
-			return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Polling was cancelled"}
+			return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Polling was canceled"}
 		}
 
 		select {
 		case <-time.After(time.Duration(currentInterval) * time.Second):
 		case <-ctx.Done():
-			return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Polling was cancelled"}
+			return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Polling was canceled"}
 		}
 
 		payload, _ := json.Marshal(map[string]string{
@@ -237,7 +237,7 @@ func unwrapEnvelope(m map[string]interface{}) (map[string]interface{}, error) {
 		return m, nil
 	}
 
-	codeVal, _ := m["code"]
+	codeVal := m["code"]
 	var code int
 	switch c := codeVal.(type) {
 	case float64:

@@ -95,9 +95,9 @@ func macosLoad() ([]byte, error) {
 	// Unescape JSON encoding
 	raw := strings.TrimSpace(string(out))
 	var decoded string
-	if err := json.Unmarshal([]byte(raw), &decoded); err != nil {
-		// Not JSON-encoded; return raw value
-		return []byte(raw), nil
+	if jsonErr := json.Unmarshal([]byte(raw), &decoded); jsonErr != nil {
+		// Not JSON-encoded; return raw value as a fallback for legacy entries.
+		return []byte(raw), nil //nolint:nilerr // intentional fallback when stored value isn't JSON-encoded
 	}
 	return []byte(decoded), nil
 }

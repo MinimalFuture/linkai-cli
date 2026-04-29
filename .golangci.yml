@@ -9,7 +9,7 @@ linters:
     - gosimple
     - typecheck
     - nilerr
-    - exportloopref
+    - copyloopvar
     - misspell
 
 linters-settings:
@@ -19,6 +19,7 @@ linters-settings:
     enable-all: true
     disable:
       - fieldalignment
+      - shadow
   misspell:
     locale: US
 
@@ -27,6 +28,7 @@ issues:
     - path: _test\.go
       linters:
         - errcheck
+        - bodyclose
   max-issues-per-linter: 50
   max-same-issues: 10
 

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"runtime/debug"
+
 	"github.com/spf13/cobra"
 
 	accountCmd    "github.com/MinimalFuture/linkai-cli/cmd/account"
@@ -33,7 +35,7 @@ var (
 func Execute() int {
 	f := cmdutil.NewDefault()
 
-	versionStr := version
+	versionStr := resolveVersion()
 	if buildDate != "" {
 		versionStr += " (" + buildDate + ")"
 	}
@@ -82,4 +84,18 @@ func Execute() int {
 		return output.ExitCodeFrom(err)
 	}
 	return 0
+}
+
+// resolveVersion prefers the ldflags-injected version. When the binary is
+// built without ldflags (notably `go install`), it falls back to the module
+// version recorded in the build info so the user sees something meaningful
+// instead of "dev".
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return bi.Main.Version
+	}
+	return version
 }

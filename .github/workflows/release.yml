@@ -11,6 +11,12 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Expose secrets at job level so step-level `if: env.X != ''` can read them.
+    # Missing secrets resolve to empty strings — see .goreleaser.yml `skip_upload`
+    # and the `Publish to npm` step's guard below.
+    env:
+      HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,7 +24,12 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -27,3 +38,10 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        if: env.NPM_TOKEN != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: node scripts/publish-npm.mjs

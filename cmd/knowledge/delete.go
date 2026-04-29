@@ -59,7 +59,7 @@ func deleteRun(opts *DeleteOptions) error {
 	if !opts.Force && f.IOStreams.IsStdinTerminal {
 		fmt.Fprintf(f.IOStreams.ErrOut, "Delete knowledge base %q? This cannot be undone. [y/N] ", opts.Code)
 		var confirm string
-		fmt.Fscan(f.IOStreams.In, &confirm)
+		_, _ = fmt.Fscan(f.IOStreams.In, &confirm)
 		if confirm != "y" && confirm != "Y" {
 			fmt.Fprintln(f.IOStreams.ErrOut, "Aborted.")
 			return nil

@@ -1,9 +1,16 @@
 version: 2
 
+before:
+  hooks:
+    - go mod tidy
+
 builds:
   - main: .
     binary: linkai
+    env:
+      - CGO_ENABLED=0
     ldflags:
+      - -s -w
       - -X github.com/MinimalFuture/linkai-cli/cmd.version={{.Version}}
       - -X github.com/MinimalFuture/linkai-cli/cmd.buildDate={{.Date}}
     goos:
@@ -20,6 +27,9 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - README.md
+      - LICENSE*
 
 checksum:
   name_template: 'checksums.txt'
@@ -31,3 +41,55 @@ changelog:
       - '^docs:'
       - '^test:'
       - '^ci:'
+
+nfpms:
+  - id: linkai-pkg
+    package_name: linkai
+    vendor: MinimalFuture
+    homepage: https://github.com/MinimalFuture/linkai-cli
+    maintainer: MinimalFuture <noreply@minimalfuture.dev>
+    description: LinkAI platform CLI
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+
+brews:
+  - name: linkai
+    # Auto-skip when HOMEBREW_TAP_GITHUB_TOKEN is unset, so first-time releases
+    # work before the homebrew-tap repo + PAT are provisioned.
+    skip_upload: '{{ if eq .Env.HOMEBREW_TAP_GITHUB_TOKEN "" }}true{{ else }}false{{ end }}'
+    repository:
+      owner: MinimalFuture
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/MinimalFuture/linkai-cli
+    description: LinkAI platform CLI
+    install: |
+      bin.install "linkai"
+    test: |
+      system "#{bin}/linkai", "--version"
+
+release:
+  header: |
+    ## Install
+
+    **One-liner (Linux/macOS):**
+    ```
+    curl -fsSL https://raw.githubusercontent.com/MinimalFuture/linkai-cli/main/install.sh | sh
+    ```
+
+    **Homebrew:**
+    ```
+    brew install MinimalFuture/tap/linkai
+    ```
+
+    **npm:**
+    ```
+    npm i -g @linkai/cli
+    ```
+
+    **Go:**
+    ```
+    go install github.com/MinimalFuture/linkai-cli@latest
+    ```

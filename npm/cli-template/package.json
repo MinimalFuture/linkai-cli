@@ -1,0 +1,16 @@
+{
+  "name": "__NAME__",
+  "version": "__VERSION__",
+  "description": "LinkAI CLI native binary for __OS__-__ARCH__",
+  "homepage": "https://github.com/MinimalFuture/linkai-cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MinimalFuture/linkai-cli.git"
+  },
+  "os": ["__NODE_OS__"],
+  "cpu": ["__NODE_ARCH__"],
+  "files": ["bin/"],
+  "publishConfig": {
+    "access": "public"
+  }
+}

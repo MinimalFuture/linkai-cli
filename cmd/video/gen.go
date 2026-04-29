@@ -111,7 +111,7 @@ func videoGenRun(opts *VideoGenOptions) error {
 		select {
 		case <-time.After(pollInterval):
 		case <-opts.Ctx.Done():
-			return fmt.Errorf("cancelled while waiting for video (task_id: %s)", task.TaskID)
+			return fmt.Errorf("canceled while waiting for video (task_id: %s)", task.TaskID)
 		}
 
 		statusBody := map[string]interface{}{

@@ -1,0 +1,30 @@
+{
+  "name": "@linkai/cli",
+  "version": "0.0.0",
+  "description": "LinkAI platform CLI",
+  "homepage": "https://github.com/MinimalFuture/linkai-cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MinimalFuture/linkai-cli.git"
+  },
+  "bin": {
+    "linkai": "bin/linkai.js"
+  },
+  "files": [
+    "bin/linkai.js"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "optionalDependencies": {
+    "@linkai/cli-darwin-arm64": "0.0.0",
+    "@linkai/cli-darwin-x64": "0.0.0",
+    "@linkai/cli-linux-arm64": "0.0.0",
+    "@linkai/cli-linux-x64": "0.0.0",
+    "@linkai/cli-win32-arm64": "0.0.0",
+    "@linkai/cli-win32-x64": "0.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
