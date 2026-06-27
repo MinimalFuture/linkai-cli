@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -133,10 +132,10 @@ func loginRun(opts *LoginOptions) error {
 		return enc.Encode(data)
 	}
 
-	// Rebase the verification URLs to the configured API base so the user always
-	// sees the correct domain (default: link-ai.tech; override: LINKAI_API_BASE).
-	authResp.VerificationUri = rebaseURL(authResp.VerificationUri, cfg.APIBase())
-	authResp.VerificationUriComplete = rebaseURL(authResp.VerificationUriComplete, cfg.APIBase())
+	// The verification URL is returned fully-formed by the server (configured
+	// per-environment via cli.verification.uri), and may live on a different
+	// host/port than the API (e.g. frontend :9090 vs API :8901 in local dev).
+	// Use it verbatim — do not rebase it onto the API base.
 
 	// Step 2: Show verification URL
 	if opts.JSON {
@@ -193,26 +192,6 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	}
 
 	return saveLoginResult(opts, cfg, result.Token)
-}
-
-// rebaseURL replaces the scheme and host of rawURL with those from base,
-// keeping the original path and query. If either URL cannot be parsed the
-// original rawURL is returned unchanged.
-func rebaseURL(rawURL, base string) string {
-	if rawURL == "" {
-		return rawURL
-	}
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return rawURL
-	}
-	b, err := url.Parse(base)
-	if err != nil {
-		return rawURL
-	}
-	parsed.Scheme = b.Scheme
-	parsed.Host = b.Host
-	return parsed.String()
 }
 
 // saveLoginResult stores the token and user info after successful authorization.
