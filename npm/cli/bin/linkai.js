@@ -4,7 +4,7 @@
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
-const pkg = `@linkai/cli-${process.platform}-${process.arch}`;
+const pkg = `linkai-cli-${process.platform}-${process.arch}`;
 const binName = process.platform === "win32" ? "linkai.exe" : "linkai";
 
 let binary;

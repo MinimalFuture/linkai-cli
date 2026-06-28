@@ -3,7 +3,7 @@
 //
 // Reads the GoReleaser dist/ output, stages a platform sub-package per
 // (os, arch) pair, runs `npm publish` on each, then publishes the main
-// `@linkai/cli` wrapper with optionalDependencies pinned to this version.
+// `linkai-cli` wrapper with optionalDependencies pinned to this version.
 //
 // Required env: RELEASE_VERSION (e.g. "v1.2.3") and NPM_TOKEN.
 // Run from the repo root after `goreleaser release` has populated dist/.
@@ -43,8 +43,8 @@ mkdirSync(stagingDir, { recursive: true });
 const subTemplateRaw = readFileSync(subTemplate, "utf8");
 
 for (const t of targets) {
-  const subName = `cli-${t.nodeOS}-${t.nodeArch}`;
-  const fullName = `@linkai/${subName}`;
+  const fullName = `linkai-cli-${t.nodeOS}-${t.nodeArch}`;
+  const subName = fullName;
   const stageRoot = join(stagingDir, subName);
   mkdirSync(join(stageRoot, "bin"), { recursive: true });
 
@@ -79,7 +79,7 @@ mainPkg.optionalDependencies = Object.fromEntries(
 );
 writeFileSync(join(mainStage, "package.json"), JSON.stringify(mainPkg, null, 2) + "\n");
 
-console.log(`==> publishing @linkai/cli@${version}`);
+console.log(`==> publishing linkai-cli@${version}`);
 npmPublish(mainStage);
 
 console.log("done");

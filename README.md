@@ -23,8 +23,8 @@ brew install MinimalFuture/tap/linkai
 ### npm（任何装了 Node 16+ 的环境）
 
 ```bash
-npm i -g @linkai/cli       # 全局安装
-npx @linkai/cli --help     # 一次性运行
+npm i -g linkai-cli        # 全局安装
+npx linkai-cli --help      # 一次性运行
 ```
 
 也可以加进 `package.json` 的 `devDependencies`，团队 `npm ci` 后即可 `npx linkai`。

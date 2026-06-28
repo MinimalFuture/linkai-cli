@@ -86,7 +86,7 @@ release:
 
     **npm:**
     ```
-    npm i -g @linkai/cli
+    npm i -g linkai-cli
     ```
 
     **Go:**
