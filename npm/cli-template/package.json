@@ -2,6 +2,7 @@
   "name": "__NAME__",
   "version": "__VERSION__",
   "description": "LinkAI CLI native binary for __OS__-__ARCH__",
+  "license": "MIT",
   "homepage": "https://github.com/MinimalFuture/linkai-cli",
   "repository": {
     "type": "git",

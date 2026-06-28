@@ -2,6 +2,7 @@
   "name": "@linkai/cli",
   "version": "0.0.0",
   "description": "LinkAI platform CLI",
+  "license": "MIT",
   "homepage": "https://github.com/MinimalFuture/linkai-cli",
   "repository": {
     "type": "git",
