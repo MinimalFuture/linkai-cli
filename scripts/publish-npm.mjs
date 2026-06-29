@@ -5,7 +5,15 @@
 // (os, arch) pair, runs `npm publish` on each, then publishes the main
 // `linkai-cli` wrapper with optionalDependencies pinned to this version.
 //
-// Required env: RELEASE_VERSION (e.g. "v1.2.3") and NPM_TOKEN.
+// Auth: in CI this relies on npm Trusted Publishing (OIDC) — no NPM_TOKEN.
+// The Release workflow grants `id-token: write` and upgrades npm to >= 11.5.1;
+// every package (main + each platform sub-package) must have a Trusted Publisher
+// configured on npmjs.com bound to this repo + workflow file (release.yml).
+// Under OIDC, npm attaches build provenance automatically.
+//
+// Required env: RELEASE_VERSION (e.g. "v1.2.3").
+// Optional env: NPM_NO_PROVENANCE=1 to disable provenance (e.g. for a local
+//   token-based publish where OIDC is unavailable).
 // Run from the repo root after `goreleaser release` has populated dist/.
 
 import { spawnSync } from "node:child_process";
@@ -98,7 +106,14 @@ function locateBinary({ goOS, goArch, bin }) {
 }
 
 function npmPublish(cwd) {
-  const result = spawnSync("npm", ["publish", "--access", "public"], {
+  const args = ["publish", "--access", "public"];
+  // Provenance is generated automatically under OIDC trusted publishing.
+  // Pass it explicitly so the run fails loudly if the OIDC context is missing,
+  // unless a local token-based publish opts out via NPM_NO_PROVENANCE.
+  if (process.env.NPM_NO_PROVENANCE !== "1") {
+    args.push("--provenance");
+  }
+  const result = spawnSync("npm", args, {
     cwd,
     stdio: "inherit",
     env: process.env,

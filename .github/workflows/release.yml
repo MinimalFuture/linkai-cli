@@ -7,16 +7,19 @@ on:
 
 permissions:
   contents: write
+  # Required for npm Trusted Publishing (OIDC): lets GitHub Actions mint a
+  # short-lived ID token that npm trusts, so no long-lived NPM_TOKEN is needed.
+  # npm validates the trusted-publisher config against THIS workflow filename
+  # (release.yml), so the id-token permission must live here.
+  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Expose secrets at job level so step-level `if: env.X != ''` can read them.
-    # Missing secrets resolve to empty strings — see .goreleaser.yml `skip_upload`
-    # and the `Publish to npm` step's guard below.
+    # HOMEBREW_TAP_GITHUB_TOKEN is still a classic secret (GitHub PAT, unaffected
+    # by npm's token policy). npm publishing uses OIDC and needs no secret.
     env:
       HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,10 +29,16 @@ jobs:
         with:
           go-version: '1.24'
 
+      # OIDC trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.14.0'
           registry-url: 'https://registry.npmjs.org'
+
+      # Node 22.14 ships an npm older than 11.5.1; upgrade so `npm publish`
+      # can perform the OIDC token exchange and attach provenance.
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest
 
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -39,9 +48,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to npm
-        if: env.NPM_TOKEN != ''
+      # No NODE_AUTH_TOKEN: npm authenticates via OIDC using the id-token above.
+      # Requires a Trusted Publisher to be configured on npmjs.com for every
+      # package (main wrapper + each platform sub-package), bound to this repo
+      # and workflow filename (release.yml).
+      - name: Publish to npm (OIDC trusted publishing)
         env:
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
           RELEASE_VERSION: ${{ github.ref_name }}
         run: node scripts/publish-npm.mjs
