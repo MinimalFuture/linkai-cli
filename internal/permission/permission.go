@@ -28,6 +28,7 @@ const (
 	ChatSend        Permission = "chat:send"
 	KnowledgeRead   Permission = "knowledge:read"
 	KnowledgeCreate Permission = "knowledge:create"
+	KnowledgeUpdate Permission = "knowledge:update"
 	KnowledgeDelete Permission = "knowledge:delete"
 	DBRead          Permission = "db:read"
 	DBWrite         Permission = "db:write"

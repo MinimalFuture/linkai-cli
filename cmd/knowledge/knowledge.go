@@ -16,6 +16,7 @@ func NewCmdKnowledge(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(NewCmdKnowledgeCreate(f, nil))
 	cmd.AddCommand(NewCmdKnowledgeList(f, nil))
 	cmd.AddCommand(NewCmdKnowledgeFiles(f, nil))
+	cmd.AddCommand(NewCmdKnowledgeUpdate(f, nil))
 	cmd.AddCommand(NewCmdKnowledgeDelete(f, nil))
 	cmd.AddCommand(NewCmdKnowledgeSearch(f, nil))
 

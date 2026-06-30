@@ -30,7 +30,7 @@ func NewCmdScoreList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.C
 	opts := &ListOptions{Factory: f}
 
 	cmd := &cobra.Command{
-		Use:   "list",
+		Use:   "credits",
 		Short: "List available credit packages",
 		Annotations: map[string]string{
 			permission.RequiredKey: permission.ScoreRead.String(),

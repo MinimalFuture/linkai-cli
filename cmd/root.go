@@ -10,13 +10,11 @@ import (
 	audioCmd      "github.com/MinimalFuture/linkai-cli/cmd/audio"
 	authCmd       "github.com/MinimalFuture/linkai-cli/cmd/auth"
 	chatCmd       "github.com/MinimalFuture/linkai-cli/cmd/chat"
-	completionCmd "github.com/MinimalFuture/linkai-cli/cmd/completion"
 	databaseCmd   "github.com/MinimalFuture/linkai-cli/cmd/database"
 	imageCmd      "github.com/MinimalFuture/linkai-cli/cmd/image"
 	knowledgeCmd  "github.com/MinimalFuture/linkai-cli/cmd/knowledge"
 	modelCmd      "github.com/MinimalFuture/linkai-cli/cmd/model"
 	pluginCmd     "github.com/MinimalFuture/linkai-cli/cmd/plugin"
-	scoreCmd      "github.com/MinimalFuture/linkai-cli/cmd/score"
 	videoCmd      "github.com/MinimalFuture/linkai-cli/cmd/video"
 	workflowCmd   "github.com/MinimalFuture/linkai-cli/cmd/workflow"
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
@@ -33,6 +31,22 @@ var (
 )
 
 func Execute() int {
+	// Preserve our explicit registration order in `--help` (group commands by
+	// concern in a deliberate order) instead of cobra's default alphabetical sort.
+	cobra.EnableCommandSorting = false
+
+	// hasUngrouped reports whether any visible (non-hidden) command lacks a
+	// GroupID. The usage template uses it to render the "Additional Commands"
+	// heading only when there is something to list (our help command is hidden).
+	cobra.AddTemplateFunc("hasUngrouped", func(cmds []*cobra.Command) bool {
+		for _, c := range cmds {
+			if c.GroupID == "" && c.IsAvailableCommand() {
+				return true
+			}
+		}
+		return false
+	})
+
 	f := cmdutil.NewDefault()
 
 	versionStr := resolveVersion()
@@ -42,10 +56,20 @@ func Execute() int {
 
 	rootCmd := &cobra.Command{
 		Use:     "linkai",
-		Short:   "LinkAI CLI - Command line tool for the LinkAI platform",
+		Short:   "LinkAI CLI - Command line interface for the LinkAI platform",
 		Version: versionStr,
 	}
 	rootCmd.SilenceErrors = true
+	// Hide cobra's auto-generated `completion` command; we don't ship shell
+	// completion as a user-facing feature.
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	// Keep the `help` command functional (`linkai help`, `linkai help account`)
+	// but hide it from the command listing — the -h/--help flag is the primary
+	// entry point and we don't want a near-empty "Additional Commands" section.
+	// cobra's default usage template force-shows any command literally named
+	// "help", so a custom template (below) is required to actually hide it.
+	rootCmd.SetHelpCommand(newHelpCmd(rootCmd))
+	rootCmd.SetUsageTemplate(usageTemplate)
 
 	// PersistentPreRunE runs before every subcommand.
 	// It silences usage on error and enforces declared permission checks.
@@ -64,26 +88,111 @@ func Execute() int {
 		return permission.Check(token, permission.Permission(required))
 	}
 
-	rootCmd.AddCommand(completionCmd.NewCmdCompletion())
-	rootCmd.AddCommand(accountCmd.NewCmdAccount(f))
-	rootCmd.AddCommand(appCmd.NewCmdApp(f))
-	rootCmd.AddCommand(audioCmd.NewCmdAudio(f))
-	rootCmd.AddCommand(authCmd.NewCmdAuth(f))
-	rootCmd.AddCommand(databaseCmd.NewCmdDatabase(f))
-	rootCmd.AddCommand(imageCmd.NewCmdImage(f))
-	rootCmd.AddCommand(knowledgeCmd.NewCmdKnowledge(f))
-	rootCmd.AddCommand(modelCmd.NewCmdModel(f))
-	rootCmd.AddCommand(videoCmd.NewCmdVideo(f))
-	rootCmd.AddCommand(chatCmd.NewCmdChat(f, nil))
-	rootCmd.AddCommand(pluginCmd.NewCmdPlugin(f))
-	rootCmd.AddCommand(scoreCmd.NewCmdScore(f))
-	rootCmd.AddCommand(workflowCmd.NewCmdWorkflow(f))
+	// Command groups organize `linkai --help` into meaningful sections instead
+	// of one long alphabetical list. Each command is assigned a GroupID below.
+	const (
+		groupResources = "resources"
+		groupAI        = "ai"
+		groupAccount   = "account"
+	)
+	rootCmd.AddGroup(
+		&cobra.Group{ID: groupResources, Title: "Resource management:"},
+		&cobra.Group{ID: groupAI, Title: "AI capabilities:"},
+		&cobra.Group{ID: groupAccount, Title: "Account & auth:"},
+	)
+
+	// 1. Core resource management
+	addToGroup(rootCmd, groupResources,
+		appCmd.NewCmdApp(f),
+		knowledgeCmd.NewCmdKnowledge(f),
+		databaseCmd.NewCmdDatabase(f),
+		workflowCmd.NewCmdWorkflow(f),
+		pluginCmd.NewCmdPlugin(f),
+		modelCmd.NewCmdModel(f),
+	)
+
+	// 2. AI capability invocation
+	addToGroup(rootCmd, groupAI,
+		chatCmd.NewCmdChat(f, nil),
+		imageCmd.NewCmdImage(f),
+		videoCmd.NewCmdVideo(f),
+		audioCmd.NewCmdAudio(f),
+	)
+
+	// 3. Account, recharge and authentication
+	addToGroup(rootCmd, groupAccount,
+		accountCmd.NewCmdAccount(f),
+		authCmd.NewCmdAuth(f),
+	)
 
 	if err := rootCmd.Execute(); err != nil {
 		output.PrintError(f.IOStreams.ErrOut, f.IOStreams.IsTerminal, err.Error())
 		return output.ExitCodeFrom(err)
 	}
 	return 0
+}
+
+// usageTemplate mirrors cobra's default usage template with one change: it does
+// NOT force-display a command literally named "help". This lets a Hidden help
+// command stay functional while being omitted from the listing, and avoids a
+// dangling empty "Additional Commands" heading.
+const usageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+
+Available Commands:{{range $cmds}}{{if .IsAvailableCommand}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+
+{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) .IsAvailableCommand)}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if hasUngrouped $cmds}}
+
+Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") .IsAvailableCommand)}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
+// newHelpCmd builds a `help` command that behaves like cobra's default one
+// (prints help for the target command, or root help when no args) but is
+// hidden from the command listing.
+func newHelpCmd(root *cobra.Command) *cobra.Command {
+	return &cobra.Command{
+		Use:    "help [command]",
+		Short:  "Help about any command",
+		Hidden: true,
+		Run: func(c *cobra.Command, args []string) {
+			target, _, err := root.Find(args)
+			if target == nil || err != nil {
+				c.Printf("Unknown help topic %#q\n", args)
+				_ = root.Help()
+				return
+			}
+			_ = target.Help()
+		},
+	}
+}
+
+// addToGroup assigns each command to the given help group and registers it.
+func addToGroup(root *cobra.Command, groupID string, cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.GroupID = groupID
+		root.AddCommand(c)
+	}
 }
 
 // resolveVersion prefers the ldflags-injected version. When the binary is

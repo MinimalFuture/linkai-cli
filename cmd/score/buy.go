@@ -60,8 +60,8 @@ func NewCmdScoreBuy(f *cmdutil.Factory, runF func(*BuyOptions) error) *cobra.Com
 	opts := &BuyOptions{Factory: f}
 
 	cmd := &cobra.Command{
-		Use:   "buy",
-		Short: "Purchase credits",
+		Use:   "recharge",
+		Short: "Recharge credits (purchase)",
 		Annotations: map[string]string{
 			permission.RequiredKey: permission.ScoreBuy.String(),
 		},
