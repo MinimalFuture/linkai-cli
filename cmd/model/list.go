@@ -32,6 +32,17 @@ func NewCmdModelList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.C
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List available AI models",
+		Long: `List the AI models available to your account.
+
+Use --type to discover models for a specific capability, e.g.:
+
+  linkai model list --type IMAGE   # image generation models (for: linkai image gen --model)
+  linkai model list --type VIDEO   # video generation models (for: linkai video gen --model)
+  linkai model list --type LLM     # large language models
+
+The model codes printed here are the values to pass to the --model flag of the
+corresponding command. Available models change over time, so prefer querying
+this list rather than hardcoding a model name.`,
 		Annotations: map[string]string{
 			permission.RequiredKey: permission.AppRead.String(),
 		},
@@ -45,7 +56,7 @@ func NewCmdModelList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.C
 	}
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
-	cmd.Flags().StringVar(&opts.ModelType, "type", "", "filter by model type (e.g. LLM, EMBEDDING)")
+	cmd.Flags().StringVar(&opts.ModelType, "type", "", "filter by model type (e.g. IMAGE, VIDEO, LLM, EMBEDDING)")
 	cmd.Flags().StringVar(&opts.SupplierType, "supplier", "", "filter by supplier code (e.g. openai, claude)")
 
 	return cmd

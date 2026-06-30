@@ -55,7 +55,10 @@ func NewDefault() *Factory {
 			deviceID, _ = config.EnsureDeviceID(cfg)
 		}
 		return &http.Client{
-			Timeout: 30 * time.Second,
+			// Synchronous media generation (e.g. image gen) can take well over
+			// 30s on some models, so allow a generous timeout. Per-request
+			// cancellation is still honored via context.
+			Timeout: 120 * time.Second,
 			Transport: &deviceIDTransport{
 				base:     newRetryTransport(http.DefaultTransport, 3),
 				deviceID: deviceID,
