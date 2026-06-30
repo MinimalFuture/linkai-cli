@@ -19,10 +19,11 @@ type DetailOptions struct {
 }
 
 type AppDetail struct {
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Type        string `json:"type"`
+	Code        string                 `json:"code"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Type        string                 `json:"type"`
+	Links       map[string]interface{} `json:"links,omitempty"`
 }
 
 func NewCmdAppDetail(f *cmdutil.Factory, runF func(*DetailOptions) error) *cobra.Command {
@@ -80,6 +81,7 @@ func detailRun(opts *DetailOptions) error {
 	if detail.Description != "" {
 		fmt.Fprintf(w, "Description: %s\n", detail.Description)
 	}
+	output.PrintLinks(w, detail.Links)
 
 	return nil
 }

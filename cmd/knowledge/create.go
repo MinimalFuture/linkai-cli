@@ -82,5 +82,6 @@ func createRun(opts *CreateOptions) error {
 
 	code, _ := result["code"].(string)
 	fmt.Fprintf(opts.Factory.IOStreams.Out, "Knowledge base created: %s (code: %s)\n", opts.Name, code)
+	output.PrintLinks(opts.Factory.IOStreams.Out, result["links"])
 	return nil
 }

@@ -42,6 +42,9 @@ const (
 	PluginRun       Permission = "plugin:run"
 	WorkflowRead    Permission = "workflow:read"
 	WorkflowRun     Permission = "workflow:run"
+	WorkflowCreate  Permission = "workflow:create"
+	WorkflowUpdate  Permission = "workflow:update"
+	WorkflowDelete  Permission = "workflow:delete"
 	ScoreRead       Permission = "score:read"
 	ScoreBuy        Permission = "score:buy"
 )

@@ -14,6 +14,9 @@ func NewCmdWorkflow(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.AddCommand(NewCmdWorkflowList(f, nil))
 	cmd.AddCommand(NewCmdWorkflowRun(f, nil))
+	cmd.AddCommand(NewCmdWorkflowCreate(f, nil))
+	cmd.AddCommand(NewCmdWorkflowUpdate(f, nil))
+	cmd.AddCommand(NewCmdWorkflowDelete(f, nil))
 
 	return cmd
 }

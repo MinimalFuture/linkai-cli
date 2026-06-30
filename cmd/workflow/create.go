@@ -1,4 +1,4 @@
-package app
+package workflow
 
 import (
 	"context"
@@ -18,23 +18,21 @@ type CreateOptions struct {
 	JSON    bool
 	DryRun  bool
 
-	Name         string
-	Type         string
-	Desc         string
-	Prompt       string
-	Introduction string
+	Name string
+	Desc string
 }
 
-func NewCmdAppCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
+func NewCmdWorkflowCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{Factory: f}
 
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create an application",
-		Long: "Create an application. Only --name is required; the type defaults " +
-			"to PROMPT (lightweight app) and all other fields use server defaults.",
+		Short: "Create a blank workflow",
+		Long: "Create a blank workflow. Only --name is required. Orchestration " +
+			"(nodes and edges) is done in the console — the returned link opens " +
+			"the workflow editor.",
 		Annotations: map[string]string{
-			permission.RequiredKey: permission.AppCreate.String(),
+			permission.RequiredKey: permission.WorkflowCreate.String(),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()
@@ -47,11 +45,8 @@ func NewCmdAppCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
-	cmd.Flags().StringVar(&opts.Name, "name", "", "application name (required)")
-	cmd.Flags().StringVar(&opts.Type, "type", "", "application type: PROMPT|EMBEDDING|WORKFLOW|AGENT (default PROMPT)")
-	cmd.Flags().StringVar(&opts.Desc, "desc", "", "application description")
-	cmd.Flags().StringVar(&opts.Prompt, "prompt", "", "system prompt / persona")
-	cmd.Flags().StringVar(&opts.Introduction, "intro", "", "opening message")
+	cmd.Flags().StringVar(&opts.Name, "name", "", "workflow name (required)")
+	cmd.Flags().StringVar(&opts.Desc, "desc", "", "workflow description")
 	_ = cmd.MarkFlagRequired("name")
 
 	return cmd
@@ -63,23 +58,14 @@ func createRun(opts *CreateOptions) error {
 	}
 
 	body := map[string]interface{}{"name": opts.Name}
-	if opts.Type != "" {
-		body["type"] = opts.Type
-	}
 	if opts.Desc != "" {
 		body["description"] = opts.Desc
-	}
-	if opts.Prompt != "" {
-		body["prompt"] = opts.Prompt
-	}
-	if opts.Introduction != "" {
-		body["introduction"] = opts.Introduction
 	}
 
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/app/create",
+			URL:    "/api/cli/workflow/create",
 			Body:   body,
 		})
 	}
@@ -89,9 +75,9 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/app/create", body)
+	resp, err := client.Post(opts.Ctx, "/api/cli/workflow/create", body)
 	if err != nil {
-		return fmt.Errorf("failed to create app: %w", err)
+		return fmt.Errorf("failed to create workflow: %w", err)
 	}
 
 	var result struct {
@@ -107,15 +93,7 @@ func createRun(opts *CreateOptions) error {
 		return output.PrintJSON(opts.Factory.IOStreams.Out, result)
 	}
 
-	fmt.Fprintf(opts.Factory.IOStreams.Out, "Application created: %s (code: %s)\n", result.Name, result.Code)
-	output.PrintLinks(opts.Factory.IOStreams.Out, mapAny(result.Links))
+	fmt.Fprintf(opts.Factory.IOStreams.Out, "Workflow created: %s (code: %s)\n", result.Name, result.Code)
+	output.PrintLinks(opts.Factory.IOStreams.Out, result.Links)
 	return nil
-}
-
-// mapAny adapts a typed map for PrintLinks which expects interface{}.
-func mapAny(m map[string]interface{}) interface{} {
-	if m == nil {
-		return nil
-	}
-	return m
 }
