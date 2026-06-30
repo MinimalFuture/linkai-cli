@@ -24,6 +24,9 @@ func (p Permission) String() string { return string(p) }
 // (chat:send, image:gen, score:buy) instead of an overloaded :write.
 const (
 	AppRead         Permission = "app:read"
+	AppCreate       Permission = "app:create"
+	AppUpdate       Permission = "app:update"
+	AppDelete       Permission = "app:delete"
 	UserRead        Permission = "user:read"
 	ChatSend        Permission = "chat:send"
 	KnowledgeRead   Permission = "knowledge:read"
