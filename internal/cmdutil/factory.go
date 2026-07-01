@@ -97,25 +97,23 @@ func NewDefault() *Factory {
 
 		switch auth.TokenStatus(token) {
 		case "expired":
-			return nil, output.ErrAuth("token has expired: run 'linkai auth login'")
+			// The access token (2h TTL) has lapsed, which is expected for any
+			// gap longer than that between commands. As long as the longer-
+			// lived refresh token (7d TTL) is still valid, refresh instead of
+			// forcing the user to re-login every couple of hours.
+			now := time.Now().UnixMilli()
+			if token.RefreshToken == "" || now >= token.RefreshExpiresAt {
+				return nil, output.ErrAuth("token has expired: run 'linkai auth login'")
+			}
+			if err := refreshStoredToken(f, cfg, token); err != nil {
+				return nil, output.ErrAuth(fmt.Sprintf("token has expired and refresh failed: %v — run 'linkai auth login'", err))
+			}
 
 		case "needs_refresh":
-			refreshed, err := auth.RefreshAccessToken(f.HttpClient(), cfg.APIBase(), token.RefreshToken)
-			if err != nil {
+			if err := refreshStoredToken(f, cfg, token); err != nil {
 				// Refresh failed — the current access token may still work for
 				// a few more minutes, so fall through with it.
 				fmt.Fprintf(f.IOStreams.ErrOut, "[linkai] [WARN] token refresh failed: %v\n", err)
-			} else {
-				now := time.Now().UnixMilli()
-				token.AccessToken = refreshed.AccessToken
-				token.ExpiresAt = now + int64(refreshed.ExpiresIn)*1000
-				if refreshed.RefreshToken != "" {
-					token.RefreshToken = refreshed.RefreshToken
-					token.RefreshExpiresAt = now + int64(refreshed.RefreshExpiresIn)*1000
-				}
-				if writeErr := auth.SetStoredToken(token); writeErr != nil {
-					fmt.Fprintf(f.IOStreams.ErrOut, "[linkai] [WARN] failed to persist refreshed token: %v\n", writeErr)
-				}
 			}
 		}
 
@@ -126,6 +124,33 @@ func NewDefault() *Factory {
 	}
 
 	return f
+}
+
+// refreshStoredToken exchanges the refresh token for a new access token and
+// persists the result in place on token. Returns an error if the refresh
+// call itself fails; token is left untouched in that case.
+func refreshStoredToken(f *Factory, cfg *config.Config, token *auth.StoredToken) error {
+	refreshed, err := auth.RefreshAccessToken(f.HttpClient(), cfg.APIBase(), token.RefreshToken)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UnixMilli()
+	token.AccessToken = refreshed.AccessToken
+	token.ExpiresAt = now + int64(refreshed.ExpiresIn)*1000
+	// The server rotates the refresh token only occasionally; on a plain
+	// sliding-window refresh it keeps the same token value but extends its
+	// TTL. Adopt a new token value when one is returned, and slide the local
+	// expiry whenever the server reports a fresh refresh TTL.
+	if refreshed.RefreshToken != "" {
+		token.RefreshToken = refreshed.RefreshToken
+	}
+	if refreshed.RefreshExpiresIn > 0 {
+		token.RefreshExpiresAt = now + int64(refreshed.RefreshExpiresIn)*1000
+	}
+	if writeErr := auth.SetStoredToken(token); writeErr != nil {
+		fmt.Fprintf(f.IOStreams.ErrOut, "[linkai] [WARN] failed to persist refreshed token: %v\n", writeErr)
+	}
+	return nil
 }
 
 // deviceIDTransport injects X-Device-ID into every outgoing request.

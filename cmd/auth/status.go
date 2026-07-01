@@ -78,8 +78,18 @@ func statusRun(opts *StatusOptions) error {
 	}
 
 	if status == "expired" {
-		result["logged_in"] = false
-		result["note"] = "Token has expired. Run 'linkai auth login' to re-authenticate."
+		// Access token (2h TTL) has lapsed, which is normal after any gap
+		// longer than that between commands. As long as the refresh token
+		// (7d TTL) is still valid, the CLI refreshes automatically on the
+		// next command — this is not the same as being logged out.
+		refreshValid := stored.RefreshToken != "" && time.Now().UnixMilli() < stored.RefreshExpiresAt
+		if refreshValid {
+			result["logged_in"] = true
+			result["note"] = "Access token expired; it will refresh automatically on your next command."
+		} else {
+			result["logged_in"] = false
+			result["note"] = "Refresh token has expired. Run 'linkai auth login' to re-authenticate."
+		}
 	} else {
 		result["logged_in"] = true
 	}
@@ -100,8 +110,11 @@ func printStatus(f *cmdutil.Factory, asJSON bool, result map[string]interface{})
 	// Human-readable output
 	loggedIn, _ := result["logged_in"].(bool)
 	if !loggedIn {
-		fmt.Fprintln(f.IOStreams.Out, "Not logged in")
-		fmt.Fprintln(f.IOStreams.Out, "Run 'linkai auth login' to authenticate")
+		note, _ := result["note"].(string)
+		if note == "" {
+			note = "Not logged in. Run 'linkai auth login' to authenticate."
+		}
+		fmt.Fprintln(f.IOStreams.Out, note)
 		return nil
 	}
 
