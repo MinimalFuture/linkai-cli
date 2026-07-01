@@ -76,7 +76,7 @@ func listRun(opts *ListOptions) error {
 		body["modelSupplierTypeList"] = []string{opts.SupplierType}
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/model/list", body)
+	resp, err := client.Post(opts.Ctx, "/cli/model/list", body)
 	if err != nil {
 		return fmt.Errorf("failed to list models: %w", err)
 	}

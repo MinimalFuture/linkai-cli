@@ -90,7 +90,7 @@ func addRun(opts *AddOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/knowledge/data/add",
+			URL:    "/cli/knowledge/data/add",
 			Body:   body,
 		})
 	}
@@ -100,7 +100,7 @@ func addRun(opts *AddOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/knowledge/data/add", body)
+	resp, err := client.Post(opts.Ctx, "/cli/knowledge/data/add", body)
 	if err != nil {
 		return fmt.Errorf("failed to add knowledge data: %w", err)
 	}

@@ -74,14 +74,14 @@ func speechRun(opts *SpeechOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/audio/speech",
+			URL:    "/cli/audio/speech",
 			Body:   body,
 		})
 	}
 
 	fmt.Fprintln(opts.Factory.IOStreams.ErrOut, "Generating speech...")
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/audio/speech", body)
+	resp, err := client.Post(opts.Ctx, "/cli/audio/speech", body)
 	if err != nil {
 		return fmt.Errorf("failed to generate speech: %w", err)
 	}

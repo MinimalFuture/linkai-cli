@@ -79,7 +79,7 @@ func createRun(opts *CreateOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/app/create",
+			URL:    "/cli/app/create",
 			Body:   body,
 		})
 	}
@@ -89,7 +89,7 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/app/create", body)
+	resp, err := client.Post(opts.Ctx, "/cli/app/create", body)
 	if err != nil {
 		return fmt.Errorf("failed to create app: %w", err)
 	}

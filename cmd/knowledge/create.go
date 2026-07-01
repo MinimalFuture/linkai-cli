@@ -61,12 +61,12 @@ func createRun(opts *CreateOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/knowledge/create",
+			URL:    "/cli/knowledge/create",
 			Body:   body,
 		})
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/knowledge/create", body)
+	resp, err := client.Post(opts.Ctx, "/cli/knowledge/create", body)
 	if err != nil {
 		return fmt.Errorf("failed to create knowledge base: %w", err)
 	}

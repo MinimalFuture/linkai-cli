@@ -65,7 +65,7 @@ func createRun(opts *CreateOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/workflow/create",
+			URL:    "/cli/workflow/create",
 			Body:   body,
 		})
 	}
@@ -75,7 +75,7 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/workflow/create", body)
+	resp, err := client.Post(opts.Ctx, "/cli/workflow/create", body)
 	if err != nil {
 		return fmt.Errorf("failed to create workflow: %w", err)
 	}

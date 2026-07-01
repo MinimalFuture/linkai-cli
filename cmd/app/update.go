@@ -91,7 +91,7 @@ func updateRun(opts *UpdateOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/app/update",
+			URL:    "/cli/app/update",
 			Body:   body,
 		})
 	}
@@ -101,7 +101,7 @@ func updateRun(opts *UpdateOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/app/update", body)
+	resp, err := client.Post(opts.Ctx, "/cli/app/update", body)
 	if err != nil {
 		return fmt.Errorf("failed to update app: %w", err)
 	}

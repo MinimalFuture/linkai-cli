@@ -53,7 +53,7 @@ func orderRun(opts *OrderOptions) error {
 	params := url.Values{}
 	params.Set("orderNo", opts.OrderNo)
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/score/order/detail", params)
+	resp, err := client.Get(opts.Ctx, "/cli/score/order/detail", params)
 	if err != nil {
 		return fmt.Errorf("failed to get order: %w", err)
 	}

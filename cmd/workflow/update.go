@@ -75,7 +75,7 @@ func updateRun(opts *UpdateOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/workflow/update",
+			URL:    "/cli/workflow/update",
 			Body:   body,
 		})
 	}
@@ -85,7 +85,7 @@ func updateRun(opts *UpdateOptions) error {
 		return err
 	}
 
-	if _, err := client.Post(opts.Ctx, "/api/cli/workflow/update", body); err != nil {
+	if _, err := client.Post(opts.Ctx, "/cli/workflow/update", body); err != nil {
 		return fmt.Errorf("failed to update workflow: %w", err)
 	}
 

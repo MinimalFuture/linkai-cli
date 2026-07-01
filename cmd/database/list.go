@@ -65,7 +65,7 @@ func listRun(opts *ListOptions) error {
 	params.Set("pageNo", strconv.Itoa(opts.Page))
 	params.Set("pageSize", strconv.Itoa(opts.PageSize))
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/database/list", params)
+	resp, err := client.Get(opts.Ctx, "/cli/database/list", params)
 	if err != nil {
 		return fmt.Errorf("failed to list databases: %w", err)
 	}

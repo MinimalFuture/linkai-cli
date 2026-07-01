@@ -80,7 +80,7 @@ func listRun(opts *ListOptions) error {
 		params.Set("key", opts.Key)
 	}
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/app/list", params)
+	resp, err := client.Get(opts.Ctx, "/cli/app/list", params)
 	if err != nil {
 		return fmt.Errorf("failed to list apps: %w", err)
 	}

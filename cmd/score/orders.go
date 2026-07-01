@@ -73,7 +73,7 @@ func ordersRun(opts *OrdersOptions) error {
 	params.Set("pageNo", strconv.Itoa(opts.Page))
 	params.Set("pageSize", strconv.Itoa(opts.PageSize))
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/score/orders", params)
+	resp, err := client.Get(opts.Ctx, "/cli/score/orders", params)
 	if err != nil {
 		return fmt.Errorf("failed to get orders: %w", err)
 	}

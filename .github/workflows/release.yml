@@ -71,13 +71,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # No NODE_AUTH_TOKEN: npm authenticates via OIDC using the id-token above.
-      # Requires a Trusted Publisher to be configured on npmjs.com for every
-      # package (main wrapper + each platform sub-package), bound to this repo
-      # and workflow filename (release.yml).
-      - name: Publish to npm (OIDC trusted publishing)
+      # Publish auth is bootstrap-friendly:
+      #   * If the NPM_TOKEN secret is set, authenticate with it and DISABLE
+      #     provenance (OIDC is unavailable in token mode). This is needed for
+      #     the very FIRST publish, because a Trusted Publisher cannot be
+      #     configured on npmjs.com until each package already exists.
+      #   * Once every package (main wrapper + each platform sub-package) has a
+      #     Trusted Publisher bound to this repo + workflow (release.yml), delete
+      #     the NPM_TOKEN secret and this step falls back to token-less OIDC,
+      #     which also attaches build provenance automatically.
+      - name: Publish to npm
         env:
           RELEASE_VERSION: ${{ steps.rel.outputs.tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_NO_PROVENANCE: ${{ secrets.NPM_TOKEN != '' && '1' || '' }}
         run: node scripts/publish-npm.mjs
 
       # Mirror release artifacts to the CDN so the install one-liners

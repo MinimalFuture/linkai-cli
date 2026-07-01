@@ -51,7 +51,7 @@ func deleteRun(opts *DeleteOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(f.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/app/delete",
+			URL:    "/cli/app/delete",
 			Body:   map[string]string{"code": opts.Code},
 		})
 	}
@@ -71,7 +71,7 @@ func deleteRun(opts *DeleteOptions) error {
 		return err
 	}
 
-	_, err = client.Post(opts.Ctx, "/api/cli/app/delete", map[string]string{
+	_, err = client.Post(opts.Ctx, "/cli/app/delete", map[string]string{
 		"code": opts.Code,
 	})
 	if err != nil {

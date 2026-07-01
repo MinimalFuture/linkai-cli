@@ -62,7 +62,7 @@ func detailRun(opts *DetailOptions) error {
 	params := url.Values{}
 	params.Set("code", opts.Code)
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/plugin/detail", params)
+	resp, err := client.Get(opts.Ctx, "/cli/plugin/detail", params)
 	if err != nil {
 		return fmt.Errorf("failed to get plugin detail: %w", err)
 	}

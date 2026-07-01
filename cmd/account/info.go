@@ -58,7 +58,7 @@ func infoRun(opts *InfoOptions) error {
 		return err
 	}
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/account/info", nil)
+	resp, err := client.Get(opts.Ctx, "/cli/account/info", nil)
 	if err != nil {
 		return fmt.Errorf("failed to get account info: %w", err)
 	}

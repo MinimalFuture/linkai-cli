@@ -98,14 +98,14 @@ func genRun(opts *GenOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/image/gen",
+			URL:    "/cli/image/gen",
 			Body:   body,
 		})
 	}
 
 	fmt.Fprintln(opts.Factory.IOStreams.ErrOut, "Generating image...")
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/image/gen", body)
+	resp, err := client.Post(opts.Ctx, "/cli/image/gen", body)
 	if err != nil {
 		return fmt.Errorf("failed to generate image: %w", err)
 	}

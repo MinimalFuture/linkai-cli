@@ -60,7 +60,7 @@ func detailRun(opts *DetailOptions) error {
 	params := url.Values{}
 	params.Set("code", opts.Code)
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/app/detail", params)
+	resp, err := client.Get(opts.Ctx, "/cli/app/detail", params)
 	if err != nil {
 		return fmt.Errorf("failed to get app detail: %w", err)
 	}

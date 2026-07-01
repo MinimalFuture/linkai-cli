@@ -61,7 +61,7 @@ func tablesRun(opts *TablesOptions) error {
 	params := url.Values{}
 	params.Set("code", opts.Code)
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/database/tables", params)
+	resp, err := client.Get(opts.Ctx, "/cli/database/tables", params)
 	if err != nil {
 		return fmt.Errorf("failed to list tables: %w", err)
 	}

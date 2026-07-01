@@ -102,7 +102,7 @@ func chatRun(opts *ChatOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/chat/completions",
+			URL:    "/cli/chat/completions",
 			Body:   body,
 		})
 	}
@@ -114,7 +114,7 @@ func chatRun(opts *ChatOptions) error {
 }
 
 func chatStream(opts *ChatOptions, client *api.Client, body map[string]interface{}) error {
-	stream, err := client.Stream(opts.Ctx, "/api/cli/chat/completions", body)
+	stream, err := client.Stream(opts.Ctx, "/cli/chat/completions", body)
 	if err != nil {
 		return fmt.Errorf("failed to start chat: %w", err)
 	}
@@ -168,7 +168,7 @@ func chatStream(opts *ChatOptions, client *api.Client, body map[string]interface
 }
 
 func chatNoStream(opts *ChatOptions, client *api.Client, body map[string]interface{}) error {
-	resp, err := client.Post(opts.Ctx, "/api/cli/chat/completions", body)
+	resp, err := client.Post(opts.Ctx, "/cli/chat/completions", body)
 	if err != nil {
 		return fmt.Errorf("failed to chat: %w", err)
 	}

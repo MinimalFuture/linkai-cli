@@ -43,11 +43,11 @@ type DeviceFlowResult struct {
 	Message string
 }
 
-// RequestDeviceAuthorization calls POST /api/cli/auth/device to initiate device flow.
+// RequestDeviceAuthorization calls POST /cli/auth/device to initiate device flow.
 // deviceID is the persistent per-machine device fingerprint.
 // scope is the requested permission scope (e.g. "chat").
 func RequestDeviceAuthorization(client *http.Client, apiBase, deviceID, scope string) (*DeviceAuthResponse, error) {
-	url := apiBase + "/api/cli/auth/device"
+	url := apiBase + "/cli/auth/device"
 
 	payload, _ := json.Marshal(map[string]string{
 		"device_id": deviceID,
@@ -114,7 +114,7 @@ func RequestDeviceAuthorization(client *http.Client, apiBase, deviceID, scope st
 	}, nil
 }
 
-// PollDeviceToken polls POST /api/cli/auth/token until authorization completes
+// PollDeviceToken polls POST /cli/auth/token until authorization completes
 // or the device code expires. This is the blocking mode used by an interactive
 // terminal: it waits up to expiresIn seconds.
 func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCode string, interval, expiresIn int, errOut io.Writer) *DeviceFlowResult {
@@ -128,7 +128,7 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 	return res
 }
 
-// PollDeviceTokenBounded polls POST /api/cli/auth/token for at most maxWait
+// PollDeviceTokenBounded polls POST /cli/auth/token for at most maxWait
 // seconds, then returns. It is designed for AI-agent (ReAct) orchestration
 // where each tool call must return within a bounded time:
 //
@@ -155,7 +155,7 @@ func PollDeviceTokenBounded(ctx context.Context, client *http.Client, apiBase, d
 	// Single-check mode: no waiting between the (single) query.
 	singleCheck := maxWait <= 0
 
-	url := apiBase + "/api/cli/auth/token"
+	url := apiBase + "/cli/auth/token"
 	deadline := time.Now().Add(time.Duration(maxWait) * time.Second)
 	currentInterval := interval
 	if currentInterval < minPollInterval {
@@ -349,11 +349,11 @@ type RefreshResult struct {
 	RefreshExpiresIn int
 }
 
-// RefreshAccessToken calls POST /api/cli/auth/refresh to obtain a new access
+// RefreshAccessToken calls POST /cli/auth/refresh to obtain a new access
 // token using the given refresh token. The caller's http.Client should already
 // inject X-Device-ID via its transport.
 func RefreshAccessToken(client *http.Client, apiBase, refreshToken string) (*RefreshResult, error) {
-	u := apiBase + "/api/cli/auth/refresh"
+	u := apiBase + "/cli/auth/refresh"
 	payload, _ := json.Marshal(map[string]string{
 		"refresh_token": refreshToken,
 	})
@@ -405,11 +405,11 @@ func RefreshAccessToken(client *http.Client, apiBase, refreshToken string) (*Ref
 	}, nil
 }
 
-// RevokeToken calls POST /api/cli/auth/revoke to invalidate the token
+// RevokeToken calls POST /cli/auth/revoke to invalidate the token
 // server-side. This is a best-effort operation; errors are returned but
 // callers may choose to ignore them.
 func RevokeToken(client *http.Client, apiBase, accessToken string) error {
-	u := apiBase + "/api/cli/auth/revoke"
+	u := apiBase + "/cli/auth/revoke"
 	req, err := http.NewRequest(http.MethodPost, u, nil)
 	if err != nil {
 		return err

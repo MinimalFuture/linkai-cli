@@ -117,12 +117,12 @@ func videoGenRun(opts *VideoGenOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/video/gen",
+			URL:    "/cli/video/gen",
 			Body:   createBody,
 		})
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/video/gen", createBody)
+	resp, err := client.Post(opts.Ctx, "/cli/video/gen", createBody)
 	if err != nil {
 		return fmt.Errorf("failed to create video task: %w", err)
 	}
@@ -148,7 +148,7 @@ func videoGenRun(opts *VideoGenOptions) error {
 			return fmt.Errorf("canceled while waiting for video (task_id: %s)", task.TaskID)
 		}
 
-		statusResp, err := client.Post(opts.Ctx, "/api/cli/video/status", map[string]interface{}{
+		statusResp, err := client.Post(opts.Ctx, "/cli/video/status", map[string]interface{}{
 			"task_id": task.TaskID,
 		})
 		if err != nil {

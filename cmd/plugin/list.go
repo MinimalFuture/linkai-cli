@@ -62,7 +62,7 @@ func listRun(opts *ListOptions) error {
 		params.Set("category", opts.Category)
 	}
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/plugin/list", params)
+	resp, err := client.Get(opts.Ctx, "/cli/plugin/list", params)
 	if err != nil {
 		return fmt.Errorf("failed to list plugins: %w", err)
 	}

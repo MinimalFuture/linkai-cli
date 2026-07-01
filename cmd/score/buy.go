@@ -117,7 +117,7 @@ func buyRun(opts *BuyOptions) error {
 }
 
 func selectProduct(opts *BuyOptions, client *api.Client) (string, error) {
-	resp, err := client.Get(opts.Ctx, "/api/cli/score/products", nil)
+	resp, err := client.Get(opts.Ctx, "/cli/score/products", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to get products: %w", err)
 	}
@@ -153,7 +153,7 @@ func resolveOrder(opts *BuyOptions, client *api.Client, productID string) (strin
 		if cacheMatch {
 			params := url.Values{}
 			params.Set("orderNo", po.OrderNo)
-			resp, err := client.Get(opts.Ctx, "/api/cli/score/order/detail", params)
+			resp, err := client.Get(opts.Ctx, "/cli/score/order/detail", params)
 			if err == nil {
 				var detail OrderDetail
 				if decErr := resp.Decode(&detail); decErr == nil {
@@ -177,7 +177,7 @@ func resolveOrder(opts *BuyOptions, client *api.Client, productID string) (strin
 	}
 
 	// Create new order
-	postResp, err := client.Post(opts.Ctx, "/api/cli/score/order/create", map[string]string{
+	postResp, err := client.Post(opts.Ctx, "/cli/score/order/create", map[string]string{
 		"goodId":     productID,
 		"payChannel": opts.PayChannel,
 	})
@@ -242,7 +242,7 @@ func humanFlow(opts *BuyOptions, client *api.Client, orderNo, codeURL string) er
 
 		params := url.Values{}
 		params.Set("orderNo", orderNo)
-		resp, err := client.Get(opts.Ctx, "/api/cli/score/order/detail", params)
+		resp, err := client.Get(opts.Ctx, "/cli/score/order/detail", params)
 		if err != nil {
 			continue
 		}

@@ -52,7 +52,7 @@ func listRun(opts *ListOptions) error {
 		return err
 	}
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/workflow/list", nil)
+	resp, err := client.Get(opts.Ctx, "/cli/workflow/list", nil)
 	if err != nil {
 		return fmt.Errorf("failed to list workflows: %w", err)
 	}

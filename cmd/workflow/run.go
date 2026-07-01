@@ -82,7 +82,7 @@ func runWorkflow(opts *RunOptions) error {
 
 	fmt.Fprintln(opts.Factory.IOStreams.ErrOut, "Running workflow...")
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/workflow/run", body)
+	resp, err := client.Post(opts.Ctx, "/cli/workflow/run", body)
 	if err != nil {
 		return fmt.Errorf("failed to run workflow: %w", err)
 	}

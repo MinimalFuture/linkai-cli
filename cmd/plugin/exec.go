@@ -73,7 +73,7 @@ func execRun(opts *ExecOptions) error {
 
 	fmt.Fprintln(opts.Factory.IOStreams.ErrOut, "Executing plugin...")
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/plugin/execute", body)
+	resp, err := client.Post(opts.Ctx, "/cli/plugin/execute", body)
 	if err != nil {
 		return fmt.Errorf("failed to execute plugin: %w", err)
 	}

@@ -67,7 +67,7 @@ func describeRun(opts *DescribeOptions) error {
 	params.Set("code", opts.Code)
 	params.Set("table", opts.Table)
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/database/describe", params)
+	resp, err := client.Get(opts.Ctx, "/cli/database/describe", params)
 	if err != nil {
 		return fmt.Errorf("failed to describe table: %w", err)
 	}

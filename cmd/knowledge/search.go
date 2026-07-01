@@ -73,7 +73,7 @@ func searchRun(opts *SearchOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/knowledge/search",
+			URL:    "/cli/knowledge/search",
 			Body:   body,
 		})
 	}
@@ -83,7 +83,7 @@ func searchRun(opts *SearchOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/knowledge/search", body)
+	resp, err := client.Post(opts.Ctx, "/cli/knowledge/search", body)
 	if err != nil {
 		return fmt.Errorf("failed to search knowledge base: %w", err)
 	}

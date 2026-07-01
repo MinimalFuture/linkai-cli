@@ -55,7 +55,7 @@ func listRun(opts *ListOptions) error {
 		return err
 	}
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/score/products", nil)
+	resp, err := client.Get(opts.Ctx, "/cli/score/products", nil)
 	if err != nil {
 		return fmt.Errorf("failed to get products: %w", err)
 	}

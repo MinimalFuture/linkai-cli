@@ -53,7 +53,7 @@ func deleteRun(opts *DeleteOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(f.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/workflow/delete",
+			URL:    "/cli/workflow/delete",
 			Body:   body,
 		})
 	}
@@ -73,7 +73,7 @@ func deleteRun(opts *DeleteOptions) error {
 		return err
 	}
 
-	if _, err := client.Post(opts.Ctx, "/api/cli/workflow/delete", body); err != nil {
+	if _, err := client.Post(opts.Ctx, "/cli/workflow/delete", body); err != nil {
 		return fmt.Errorf("failed to delete workflow: %w", err)
 	}
 

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultAPIBase = "https://link-ai.tech"
+	DefaultAPIBase = "https://api.link-ai.tech"
 	configDirName  = ".linkai"
 	configFileName = "config.json"
 )

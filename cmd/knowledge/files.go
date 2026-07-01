@@ -77,7 +77,7 @@ func filesRun(opts *FilesOptions) error {
 		params.Set("file_name", opts.FileName)
 	}
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/knowledge/files", params)
+	resp, err := client.Get(opts.Ctx, "/cli/knowledge/files", params)
 	if err != nil {
 		return fmt.Errorf("failed to list files: %w", err)
 	}

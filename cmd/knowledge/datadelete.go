@@ -64,7 +64,7 @@ func dataDeleteRun(opts *DataDeleteOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(f.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/knowledge/data/delete",
+			URL:    "/cli/knowledge/data/delete",
 			Body:   body,
 		})
 	}
@@ -84,7 +84,7 @@ func dataDeleteRun(opts *DataDeleteOptions) error {
 		return err
 	}
 
-	_, err = client.Post(opts.Ctx, "/api/cli/knowledge/data/delete", body)
+	_, err = client.Post(opts.Ctx, "/cli/knowledge/data/delete", body)
 	if err != nil {
 		return fmt.Errorf("failed to delete knowledge data: %w", err)
 	}

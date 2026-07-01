@@ -56,7 +56,7 @@ func listKBRun(opts *ListOptions) error {
 		return err
 	}
 
-	resp, err := client.Get(opts.Ctx, "/api/cli/knowledge/list", nil)
+	resp, err := client.Get(opts.Ctx, "/cli/knowledge/list", nil)
 	if err != nil {
 		return fmt.Errorf("failed to list knowledge bases: %w", err)
 	}

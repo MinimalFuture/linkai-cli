@@ -83,7 +83,7 @@ func updateRun(opts *UpdateOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/knowledge/update",
+			URL:    "/cli/knowledge/update",
 			Body:   body,
 		})
 	}
@@ -93,7 +93,7 @@ func updateRun(opts *UpdateOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/knowledge/update", body)
+	resp, err := client.Post(opts.Ctx, "/cli/knowledge/update", body)
 	if err != nil {
 		return fmt.Errorf("failed to update knowledge base: %w", err)
 	}

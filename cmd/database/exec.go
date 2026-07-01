@@ -113,7 +113,7 @@ func execRun(opts *ExecOptions) error {
 	if opts.DryRun {
 		return output.PrintDryRun(opts.Factory.IOStreams.Out, output.DryRunInfo{
 			Method: "POST",
-			URL:    "/api/cli/database/exec",
+			URL:    "/cli/database/exec",
 			Body:   body,
 		})
 	}
@@ -123,7 +123,7 @@ func execRun(opts *ExecOptions) error {
 		return err
 	}
 
-	resp, err := client.Post(opts.Ctx, "/api/cli/database/exec", body)
+	resp, err := client.Post(opts.Ctx, "/cli/database/exec", body)
 	if err != nil {
 		return fmt.Errorf("failed to execute SQL: %w", err)
 	}
