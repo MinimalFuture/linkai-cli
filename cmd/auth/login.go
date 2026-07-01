@@ -23,6 +23,12 @@ type LoginOptions struct {
 	NoWait     bool
 	DeviceCode string
 	Scope      string
+	// Wait bounds how long a --device-code poll blocks, in seconds. It is only
+	// meaningful together with --device-code (the agent polling path):
+	//   <0  : not set → block until the code expires (interactive default)
+	//    0  : single check — query once and return immediately
+	//   >0  : poll for at most Wait seconds, then return pending
+	Wait int
 }
 
 // NewCmdAuthLogin creates the auth login subcommand.
@@ -52,6 +58,7 @@ verification URL from its output. Use --no-wait to get the URL immediately.`,
 	cmd.Flags().BoolVar(&opts.NoWait, "no-wait", false, "initiate device authorization and return immediately; use --device-code to complete")
 	cmd.Flags().StringVar(&opts.DeviceCode, "device-code", "", "poll and complete authorization with a device code from a previous --no-wait call")
 	cmd.Flags().StringVar(&opts.Scope, "scope", permission.Defaults(), "space-separated list of requested permission scopes")
+	cmd.Flags().IntVar(&opts.Wait, "wait", -1, "with --device-code: max seconds to poll before returning (0 = check once and return; >0 = bounded wait). Designed for AI-agent polling loops.")
 
 	return cmd
 }
@@ -120,17 +127,29 @@ func loginRun(opts *LoginOptions) error {
 		return fmt.Errorf("device authorization failed: %w", err)
 	}
 
-	// --no-wait: return immediately with device code and URL
+	// --no-wait: return immediately with the URL + device code, plus an explicit
+	// next-step instruction so an AI agent can drive the flow from this output
+	// alone (without relying on the CLI skill prompt being loaded).
 	if opts.NoWait {
+		// Each poll blocks up to 60s so the user has plenty of time to open the
+		// link, log in and approve on their phone, while still returning within
+		// a single agent tool-call budget. The agent keeps re-running this until
+		// authorization completes or the device code expires (expires_in).
+		nextCommand := fmt.Sprintf("linkai auth login --device-code %s --wait 60 --json", authResp.DeviceCode)
 		data := map[string]interface{}{
+			"event":            "device_authorization",
 			"verification_url": authResp.VerificationUriComplete,
 			"device_code":      authResp.DeviceCode,
 			"expires_in":       authResp.ExpiresIn,
-			"hint":             fmt.Sprintf("Open verification_url in browser, then run: linkai auth login --device-code %s", authResp.DeviceCode),
+			// Machine-readable guidance for an agent's next tool call.
+			"next_action": map[string]interface{}{
+				"instruction": "Show verification_url to the user and tell them to open it, log in and authorize (this may take a minute or two — scanning a QR code, logging in, etc.). Then run next_command to check status. Each call blocks up to 60s. It returns event=authorization_pending (NOT a failure — the user just hasn't finished yet; re-run the SAME command to keep waiting), authorization_complete (done), or authorization_failed (stop). Keep polling on 'pending' until complete or expires_in seconds have elapsed since this response.",
+				"command":     nextCommand,
+				"poll":        true,
+			},
+			"hint": fmt.Sprintf("Ask the user to open verification_url and authorize (may take 1-2 min), then poll (repeat on pending): %s", nextCommand),
 		}
-		enc := json.NewEncoder(f.IOStreams.Out)
-		enc.SetEscapeHTML(false)
-		return enc.Encode(data)
+		return writeJSON(f, data)
 	}
 
 	// The verification URL is returned fully-formed by the server (configured
@@ -182,14 +201,57 @@ func loginRun(opts *LoginOptions) error {
 	return saveLoginResult(opts, cfg, result.Token)
 }
 
-// loginPollDeviceCode resumes polling with a device code from a previous --no-wait call.
+// loginPollDeviceCode resumes polling with a device code from a previous
+// --no-wait call.
+//
+// When --wait is set (>= 0) it uses the bounded poller intended for AI agents:
+// it returns within the budget and reports one of three states as JSON —
+// authorization_complete / authorization_pending / authorization_failed — so
+// the agent can loop by calling this command again on "pending" without ever
+// blocking a tool call indefinitely. Without --wait it blocks like the
+// interactive flow.
 func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	f := opts.Factory
 	client := f.HttpClient()
 
+	// Agent (bounded) mode: --wait explicitly provided.
+	if opts.Wait >= 0 {
+		result := auth.PollDeviceTokenBounded(opts.Ctx, client, cfg.APIBase(),
+			opts.DeviceCode, 5, opts.Wait, f.IOStreams.ErrOut)
+
+		if result.Pending {
+			if opts.JSON {
+				sameCommand := fmt.Sprintf("linkai auth login --device-code %s --wait %d --json", opts.DeviceCode, opts.Wait)
+				return writeJSON(f, map[string]interface{}{
+					"event":       "authorization_pending",
+					"device_code": opts.DeviceCode,
+					"next_action": map[string]interface{}{
+						"instruction": "The user has not finished authorizing yet. This is NOT an error. Re-run the SAME command to keep waiting. Stop only on authorization_complete or authorization_failed.",
+						"command":     sameCommand,
+						"poll":        true,
+					},
+					"hint": fmt.Sprintf("Not authorized yet — re-run to keep waiting: %s", sameCommand),
+				})
+			}
+			fmt.Fprintln(f.IOStreams.ErrOut, "Authorization still pending; run again to keep waiting.")
+			return nil
+		}
+		if !result.OK || result.Token == nil {
+			if opts.JSON {
+				_ = writeJSON(f, map[string]interface{}{
+					"event": "authorization_failed",
+					"error": result.Message,
+				})
+			}
+			return fmt.Errorf("authorization failed: %s", result.Message)
+		}
+		return saveLoginResult(opts, cfg, result.Token)
+	}
+
+	// Interactive (blocking) mode.
 	fmt.Fprintln(f.IOStreams.ErrOut, "Waiting for authorization...")
 	result := auth.PollDeviceToken(opts.Ctx, client, cfg.APIBase(),
-		opts.DeviceCode, 3, 300, f.IOStreams.ErrOut)
+		opts.DeviceCode, 5, 300, f.IOStreams.ErrOut)
 
 	if !result.OK {
 		return fmt.Errorf("authorization failed: %s", result.Message)
@@ -199,6 +261,13 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 	}
 
 	return saveLoginResult(opts, cfg, result.Token)
+}
+
+// writeJSON writes v as non-HTML-escaped JSON to stdout.
+func writeJSON(f *cmdutil.Factory, v interface{}) error {
+	enc := json.NewEncoder(f.IOStreams.Out)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(v)
 }
 
 // saveLoginResult stores the token and user info after successful authorization.

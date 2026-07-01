@@ -54,8 +54,15 @@ func NewCmdChat(f *cmdutil.Factory, runF func(*ChatOptions) error) *cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Ctx = cmd.Context()
 			opts.Message = args[0]
+			// Streaming default is context-aware: a human at a terminal gets the
+			// typewriter effect, but when the output is piped/redirected (the
+			// typical AI-agent-via-bash case) we default to non-streaming so the
+			// reply arrives as one clean block. --stream / --no-stream override
+			// this, and --json always forces non-streaming.
 			if opts.JSON {
 				opts.NoStream = true
+			} else if !cmd.Flags().Changed("stream") && !cmd.Flags().Changed("no-stream") {
+				opts.NoStream = !f.IOStreams.IsTerminal
 			}
 			if runF != nil {
 				return runF(opts)
@@ -64,9 +71,12 @@ func NewCmdChat(f *cmdutil.Factory, runF func(*ChatOptions) error) *cobra.Comman
 		},
 	}
 
+	var stream bool
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format (disables streaming)")
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 	cmd.Flags().BoolVar(&opts.NoStream, "no-stream", false, "disable streaming, wait for full reply")
+	cmd.Flags().BoolVar(&stream, "stream", false, "force streaming output (default when stdout is a terminal)")
+	cmd.MarkFlagsMutuallyExclusive("stream", "no-stream")
 	cmd.Flags().StringVar(&opts.App, "app", "", "application code")
 	cmd.Flags().StringVar(&opts.SessionID, "session", "", "session ID for multi-turn conversation")
 	_ = cmd.MarkFlagRequired("app")

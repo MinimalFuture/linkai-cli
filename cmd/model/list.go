@@ -99,8 +99,8 @@ func listRun(opts *ListOptions) error {
 	rows := make([][]string, 0, len(models))
 	for _, m := range models {
 		types := "-"
-		if len(m.ModelTypes) > 0 {
-			types = strings.Join(m.ModelTypes, " / ")
+		if canonical := canonicalTypes(m.ModelTypes); len(canonical) > 0 {
+			types = strings.Join(canonical, " / ")
 		}
 		rows = append(rows, []string{m.ModelCode, m.ModelName, types})
 	}
@@ -108,4 +108,46 @@ func listRun(opts *ListOptions) error {
 	fmt.Fprintf(opts.Factory.IOStreams.ErrOut, "\nTotal: %d\n", len(models))
 
 	return nil
+}
+
+// canonicalTypes normalizes the backend's model-type labels (a mix of Chinese
+// and English strings) into a small, stable, English-only set that is friendly
+// to both overseas users and agents:
+//
+//	LLM       — language models (chat / reasoning are merged: reasoning is just
+//	            an LLM capability, not a separate category)
+//	IMAGE     — image generation / understanding
+//	VIDEO     — video generation
+//	EMBEDDING — embedding models
+//
+// Unknown labels are passed through unchanged so we never silently hide a new
+// backend category. The result is de-duplicated while preserving first-seen
+// order.
+func canonicalTypes(raw []string) []string {
+	seen := make(map[string]bool, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, t := range raw {
+		c := canonicalType(t)
+		if c == "" || seen[c] {
+			continue
+		}
+		seen[c] = true
+		out = append(out, c)
+	}
+	return out
+}
+
+func canonicalType(t string) string {
+	switch strings.TrimSpace(t) {
+	case "大语言模型", "推理模型", "REASONER", "LLM":
+		return "LLM"
+	case "图像生成模型", "图像理解模型", "IMAGE":
+		return "IMAGE"
+	case "VIDEO", "视频生成模型":
+		return "VIDEO"
+	case "EMBEDDING", "向量模型", "嵌入模型":
+		return "EMBEDDING"
+	default:
+		return strings.TrimSpace(t)
+	}
 }

@@ -30,8 +30,14 @@ type DeviceFlowTokenData struct {
 }
 
 // DeviceFlowResult is the result of polling the token endpoint.
+//
+// Pending is true only in bounded-wait mode (see PollDeviceTokenBounded): the
+// authorization is still pending when the caller's time budget ran out. It is
+// NOT a failure — the caller (typically an AI agent) is expected to poll again
+// with the same device_code. OK and Pending are mutually exclusive.
 type DeviceFlowResult struct {
 	OK      bool
+	Pending bool
 	Token   *DeviceFlowTokenData
 	Error   string
 	Message string
@@ -91,7 +97,7 @@ func RequestDeviceAuthorization(client *http.Client, apiBase, deviceID, scope st
 	}
 
 	expiresIn := getInt(data, "expires_in", 300)
-	interval := getInt(data, "interval", 3)
+	interval := getInt(data, "interval", 5)
 
 	verificationUri := getString(data, "verification_uri")
 	verificationUriComplete := getString(data, "verification_uri_complete")
@@ -108,30 +114,78 @@ func RequestDeviceAuthorization(client *http.Client, apiBase, deviceID, scope st
 	}, nil
 }
 
-// PollDeviceToken polls POST /api/cli/auth/token until authorization completes or times out.
+// PollDeviceToken polls POST /api/cli/auth/token until authorization completes
+// or the device code expires. This is the blocking mode used by an interactive
+// terminal: it waits up to expiresIn seconds.
 func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCode string, interval, expiresIn int, errOut io.Writer) *DeviceFlowResult {
+	// expiresIn as the wait budget → behaves as "wait until the code expires".
+	res := PollDeviceTokenBounded(ctx, client, apiBase, deviceCode, interval, expiresIn, errOut)
+	// In interactive mode, budget exhaustion == the device code expired, which
+	// is a terminal timeout rather than a "poll again" pending state.
+	if res.Pending {
+		return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Authorization timed out, please try again"}
+	}
+	return res
+}
+
+// PollDeviceTokenBounded polls POST /api/cli/auth/token for at most maxWait
+// seconds, then returns. It is designed for AI-agent (ReAct) orchestration
+// where each tool call must return within a bounded time:
+//
+//   - maxWait <= 0 : single check — query once and return immediately
+//     (Pending if still awaiting authorization).
+//   - maxWait  > 0 : poll for up to maxWait seconds; if authorization has not
+//     completed by then, return Pending (NOT a failure) so the agent can call
+//     again with the same device_code.
+//
+// A Pending result means "not done yet, poll again"; it is distinct from a
+// hard failure (expired_token / access_denied), which the agent must not retry.
+func PollDeviceTokenBounded(ctx context.Context, client *http.Client, apiBase, deviceCode string, interval, maxWait int, errOut io.Writer) *DeviceFlowResult {
 	if errOut == nil {
 		errOut = io.Discard
 	}
 
 	const maxPollInterval = 60
 	const maxPollAttempts = 200
+	// Device-flow polling is a "user is scanning a QR code / logging in" wait,
+	// so a 5s cadence is plenty and keeps server-side Redis load low. We clamp
+	// up to this floor in case the server returns a smaller (or zero) interval.
+	const minPollInterval = 5
+
+	// Single-check mode: no waiting between the (single) query.
+	singleCheck := maxWait <= 0
 
 	url := apiBase + "/api/cli/auth/token"
-	deadline := time.Now().Add(time.Duration(expiresIn) * time.Second)
+	deadline := time.Now().Add(time.Duration(maxWait) * time.Second)
 	currentInterval := interval
+	if currentInterval < minPollInterval {
+		currentInterval = minPollInterval
+	}
 	attempts := 0
 
-	for time.Now().Before(deadline) && attempts < maxPollAttempts {
+	// In single-check mode we run exactly one iteration with no pre-sleep.
+	for singleCheck || (time.Now().Before(deadline) && attempts < maxPollAttempts) {
 		attempts++
 		if ctx.Err() != nil {
 			return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Polling was canceled"}
 		}
 
-		select {
-		case <-time.After(time.Duration(currentInterval) * time.Second):
-		case <-ctx.Done():
-			return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Polling was canceled"}
+		// Single-check: skip the inter-poll sleep and query straight away.
+		if !singleCheck {
+			// Cap the sleep so we do not overshoot the maxWait budget.
+			remaining := time.Until(deadline)
+			if remaining <= 0 {
+				break
+			}
+			sleep := time.Duration(currentInterval) * time.Second
+			if sleep > remaining {
+				sleep = remaining
+			}
+			select {
+			case <-time.After(sleep):
+			case <-ctx.Done():
+				return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Polling was canceled"}
+			}
 		}
 
 		payload, _ := json.Marshal(map[string]string{
@@ -146,6 +200,9 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Fprintf(errOut, "[linkai] [WARN] device-flow: poll network error: %v\n", err)
+			if singleCheck {
+				return &DeviceFlowResult{OK: false, Error: "network_error", Message: err.Error()}
+			}
 			currentInterval = minInt(currentInterval+1, maxPollInterval)
 			continue
 		}
@@ -154,6 +211,9 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 		resp.Body.Close()
 		if err != nil {
 			fmt.Fprintf(errOut, "[linkai] [WARN] device-flow: poll read error: %v\n", err)
+			if singleCheck {
+				return &DeviceFlowResult{OK: false, Error: "network_error", Message: err.Error()}
+			}
 			currentInterval = minInt(currentInterval+1, maxPollInterval)
 			continue
 		}
@@ -161,6 +221,9 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 		var raw map[string]interface{}
 		if err := json.Unmarshal(body, &raw); err != nil {
 			fmt.Fprintf(errOut, "[linkai] [WARN] device-flow: poll parse error: %v\n", err)
+			if singleCheck {
+				return &DeviceFlowResult{OK: false, Error: "server_error", Message: "response not JSON"}
+			}
 			currentInterval = minInt(currentInterval+1, maxPollInterval)
 			continue
 		}
@@ -191,10 +254,18 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 
 		switch errStr {
 		case "authorization_pending":
+			// Single-check mode returns immediately so the agent can decide
+			// what to do next; blocking mode keeps polling until its budget.
+			if singleCheck {
+				return &DeviceFlowResult{OK: false, Pending: true, Error: "authorization_pending", Message: "Authorization still pending"}
+			}
 			continue
 		case "slow_down":
 			currentInterval = minInt(currentInterval+5, maxPollInterval)
 			fmt.Fprintf(errOut, "[linkai] device-flow: slow_down, interval increased to %ds\n", currentInterval)
+			if singleCheck {
+				return &DeviceFlowResult{OK: false, Pending: true, Error: "authorization_pending", Message: "Authorization still pending"}
+			}
 			continue
 		case "access_denied":
 			msg := getString(data, "error_description")
@@ -224,7 +295,11 @@ func PollDeviceToken(ctx context.Context, client *http.Client, apiBase, deviceCo
 	if attempts >= maxPollAttempts {
 		fmt.Fprintf(errOut, "[linkai] [WARN] device-flow: max poll attempts reached\n")
 	}
-	return &DeviceFlowResult{OK: false, Error: "expired_token", Message: "Authorization timed out, please try again"}
+	// Ran out of the wait budget without a terminal answer. This is Pending,
+	// not a failure: the device code may still be valid on the server, so the
+	// caller can poll again. The interactive wrapper (PollDeviceToken) maps a
+	// budget-exhausted result to a user-facing timeout instead.
+	return &DeviceFlowResult{OK: false, Pending: true, Error: "authorization_pending", Message: "Authorization still pending"}
 }
 
 // unwrapEnvelope checks if the raw JSON follows the ResultDTO envelope
