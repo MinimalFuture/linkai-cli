@@ -128,21 +128,26 @@ Permissions are requested at login via `--scope`, in `resource:action` form. Rea
 | Scope | Description | Default |
 |-------|-------------|:---:|
 | `app:read` | List and inspect apps | ✅ |
+| `app:create` | Create apps | ✅ |
 | `user:read` | Read user info | ✅ |
 | `chat:send` | Chat with apps | ✅ |
 | `knowledge:read` | Query knowledge bases | ✅ |
+| `knowledge:create` | Create knowledge bases / add files | ✅ |
 | `db:read` | Query databases / run SELECT | ✅ |
 | `image:gen` / `video:gen` / `audio:gen` | Generate images / video / speech | ✅ |
 | `plugin:read` / `plugin:run` | List / run plugins | ✅ |
 | `workflow:read` / `workflow:run` | List / run workflows | ✅ |
+| `workflow:create` | Create workflows | ✅ |
 | `score:read` / `score:buy` | View / purchase credits | ✅ |
-| `knowledge:create` / `knowledge:delete` | Create / delete knowledge bases | ❌ |
+| `app:update` / `app:delete` | Update / delete apps | ❌ |
+| `knowledge:update` / `knowledge:delete` | Update / delete knowledge bases | ❌ |
+| `workflow:update` / `workflow:delete` | Update / delete workflows | ❌ |
 | `db:write` | Database writes (INSERT/UPDATE/DELETE) | ❌ |
 
 Request extra scopes by logging in again, for example:
 
 ```bash
-linkai auth login --scope "db:read db:write knowledge:create knowledge:delete"
+linkai auth login --scope "db:read db:write knowledge:update knowledge:delete"
 ```
 
 ## More
@@ -178,7 +183,7 @@ make test    # run tests
 make lint    # golangci-lint
 ```
 
-To add a command, follow the pattern in `cmd/database/`, register it in `cmd/root.go`, and declare its scope via `permission.RequiredKey`. See [CLAUDE.md](./CLAUDE.md) for details.
+To add a command, follow the pattern in `cmd/database/`, register it in `cmd/root.go`, and declare its scope via `permission.RequiredKey`.
 
 </details>
 

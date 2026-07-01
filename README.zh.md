@@ -128,21 +128,26 @@ linkai chat "你好" --app <app_code>    # 3. 与应用对话
 | 权限 | 说明 | 默认授予 |
 |------|------|:---:|
 | `app:read` | 查询应用列表、详情 | ✅ |
+| `app:create` | 创建应用 | ✅ |
 | `user:read` | 查询用户信息 | ✅ |
 | `chat:send` | 与应用对话 | ✅ |
 | `knowledge:read` | 查询知识库 | ✅ |
+| `knowledge:create` | 创建知识库 / 添加文件 | ✅ |
 | `db:read` | 查询数据库 / 执行 SELECT | ✅ |
 | `image:gen` / `video:gen` / `audio:gen` | 生成图片 / 视频 / 语音 | ✅ |
 | `plugin:read` / `plugin:run` | 查询 / 执行插件 | ✅ |
 | `workflow:read` / `workflow:run` | 查询 / 运行工作流 | ✅ |
+| `workflow:create` | 创建工作流 | ✅ |
 | `score:read` / `score:buy` | 查看 / 购买积分 | ✅ |
-| `knowledge:create` / `knowledge:delete` | 创建 / 删除知识库 | ❌ |
+| `app:update` / `app:delete` | 更新 / 删除应用 | ❌ |
+| `knowledge:update` / `knowledge:delete` | 更新 / 删除知识库 | ❌ |
+| `workflow:update` / `workflow:delete` | 更新 / 删除工作流 | ❌ |
 | `db:write` | 数据库写操作（INSERT/UPDATE/DELETE） | ❌ |
 
 申请额外权限时重新登录，例如：
 
 ```bash
-linkai auth login --scope "db:read db:write knowledge:create knowledge:delete"
+linkai auth login --scope "db:read db:write knowledge:update knowledge:delete"
 ```
 
 ## 更多
@@ -178,7 +183,7 @@ make test    # 测试
 make lint    # golangci-lint
 ```
 
-添加新命令参考 `cmd/database/`，在 `cmd/root.go` 注册，通过 `permission.RequiredKey` 声明权限。详见 [CLAUDE.md](./CLAUDE.md)。
+添加新命令参考 `cmd/database/`，在 `cmd/root.go` 注册，通过 `permission.RequiredKey` 声明权限。
 
 </details>
 
