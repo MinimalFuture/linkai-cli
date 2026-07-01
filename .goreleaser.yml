@@ -3,6 +3,13 @@ version: 2
 before:
   hooks:
     - go mod tidy
+    # Runs after --clean wipes ./dist, so these extra release assets survive.
+    - mkdir -p dist
+    # Agent skill archive (fetched by install.sh / install.ps1 and the CDN).
+    - sh -c 'tar -C skills -czf dist/linkai-cli-skill.tar.gz linkai-cli'
+    # Plain-text pointer to the current version, so the CDN installer can
+    # resolve "latest" without a releases API.
+    - sh -c 'printf "%s" "{{ .Tag }}" > dist/latest.txt'
 
 builds:
   - main: .
@@ -29,6 +36,7 @@ archives:
         format: zip
     files:
       - README.md
+      - README.zh.md
       - LICENSE*
 
 checksum:
@@ -74,9 +82,19 @@ release:
   header: |
     ## Install
 
+    **npm (recommended):**
+    ```
+    npm i -g linkai-cli
+    ```
+
     **One-liner (Linux/macOS):**
     ```
-    curl -fsSL https://raw.githubusercontent.com/MinimalFuture/linkai-cli/main/install.sh | sh
+    curl -fsSL https://cdn.link-ai.tech/cli/install.sh | sh
+    ```
+
+    **Windows (PowerShell):**
+    ```
+    irm https://cdn.link-ai.tech/cli/install.ps1 | iex
     ```
 
     **Homebrew:**
@@ -84,12 +102,13 @@ release:
     brew install MinimalFuture/tap/linkai
     ```
 
-    **npm:**
-    ```
-    npm i -g linkai-cli
-    ```
-
     **Go:**
     ```
     go install github.com/MinimalFuture/linkai-cli@latest
     ```
+  # The agent skill archive and latest.txt are produced by the release workflow
+  # (see .github/workflows/release.yml "Package skill" step) and uploaded here
+  # so both the install script and the CDN sync can fetch them by name.
+  extra_files:
+    - glob: ./dist/linkai-cli-skill.tar.gz
+    - glob: ./dist/latest.txt

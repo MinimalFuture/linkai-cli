@@ -20,6 +20,13 @@ jobs:
     # by npm's token policy). npm publishing uses OIDC and needs no secret.
     env:
       HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      # CDN mirror credentials (neutral names — no provider in the clear).
+      # When unset, the "Sync artifacts to CDN" step is skipped.
+      CDN_SECRET_ID: ${{ secrets.CDN_SECRET_ID }}
+      CDN_SECRET_KEY: ${{ secrets.CDN_SECRET_KEY }}
+      CDN_BUCKET: ${{ secrets.CDN_BUCKET }}
+      CDN_REGION: ${{ secrets.CDN_REGION }}
+      CDN_DOMAIN: ${{ secrets.CDN_DOMAIN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,3 +63,13 @@ jobs:
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
         run: node scripts/publish-npm.mjs
+
+      # Mirror release artifacts to the CDN so the install one-liners
+      # (cdn.link-ai.tech/cli/...) serve binaries, checksums, the skill archive,
+      # install scripts and latest.txt. Skipped automatically when CDN secrets
+      # are not configured, so releases still work before the CDN is set up.
+      - name: Sync artifacts to CDN
+        if: ${{ env.CDN_SECRET_ID != '' }}
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: bash scripts/sync-cdn.sh
