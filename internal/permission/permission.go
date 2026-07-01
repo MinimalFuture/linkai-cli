@@ -54,12 +54,20 @@ const (
 const RequiredKey = "required_permission"
 
 // defaults is the permission set requested at login by default.
-// Only includes permissions actually used by the CLI.
+//
+// It grants the read ("query") and create actions, which are the common,
+// low-risk operations. The more destructive edit/delete actions
+// (app:update, app:delete, knowledge:update, knowledge:delete,
+// workflow:update, workflow:delete) and db:write are intentionally left out —
+// users opt into those by ticking them on the authorization page (or via
+// --scope on login).
 var defaults = []Permission{
 	AppRead,
+	AppCreate,
 	UserRead,
 	ChatSend,
 	KnowledgeRead,
+	KnowledgeCreate,
 	DBRead,
 	ImageGen,
 	VideoGen,
@@ -68,6 +76,7 @@ var defaults = []Permission{
 	PluginRun,
 	WorkflowRead,
 	WorkflowRun,
+	WorkflowCreate,
 	ScoreRead,
 	ScoreBuy,
 }

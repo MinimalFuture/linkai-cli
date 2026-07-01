@@ -123,14 +123,15 @@ func TestDefaults_IncludesEveryDeclaredPermission(t *testing.T) {
 	for _, f := range fields {
 		set[f] = struct{}{}
 	}
-	// db:write, knowledge:create, knowledge:delete are sensitive enough that we
-	// don't request them by default; users opt in via --scope on login.
+	// Defaults grant read + create actions. The destructive edit/delete actions
+	// and db:write are sensitive enough that we don't request them by default;
+	// users opt in via the authorization page or --scope on login.
 	expected := []Permission{
-		AppRead, UserRead, ChatSend,
-		KnowledgeRead, DBRead,
+		AppRead, AppCreate, UserRead, ChatSend,
+		KnowledgeRead, KnowledgeCreate, DBRead,
 		ImageGen, VideoGen, AudioGen,
 		PluginRead, PluginRun,
-		WorkflowRead, WorkflowRun,
+		WorkflowRead, WorkflowRun, WorkflowCreate,
 		ScoreRead, ScoreBuy,
 	}
 	for _, p := range expected {

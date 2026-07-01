@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
+	"github.com/MinimalFuture/linkai-cli/internal/browser"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/config"
 	"github.com/MinimalFuture/linkai-cli/internal/permission"
@@ -152,6 +153,12 @@ func loginRun(opts *LoginOptions) error {
 		fmt.Fprintf(f.IOStreams.ErrOut, "\nRequesting authorization with scope: %s\n", scope)
 		fmt.Fprintf(f.IOStreams.ErrOut, "Open the following URL in your browser to authorize:\n")
 		fmt.Fprintf(f.IOStreams.ErrOut, "  %s\n\n", authResp.VerificationUriComplete)
+		// Best-effort: try to pop the browser open automatically. On headless
+		// hosts (containers, remote Linux without a display) this fails
+		// silently — the URL above is always printed for manual open.
+		if err := browser.Open(authResp.VerificationUriComplete); err == nil {
+			fmt.Fprintf(f.IOStreams.ErrOut, "(opened in your default browser)\n\n")
+		}
 	}
 
 	// Step 3: Poll for token
