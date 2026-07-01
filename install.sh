@@ -97,7 +97,7 @@ pick_source() {
 }
 
 # Resolve the latest version tag.
-#   CDN   : read cli/latest.txt (a plain text file holding e.g. "v1.2.3").
+#   CDN   : read cli/latest.txt (a plain text file holding e.g. "0.1.0").
 #   GitHub: follow the /releases/latest redirect (avoids API rate limits).
 resolve_version() {
   [ "$VERSION" != "latest" ] && return 0
@@ -112,7 +112,10 @@ resolve_version() {
     fi
   fi
   [ -n "$VERSION" ] && [ "$VERSION" != "latest" ] \
-    || err "could not resolve the latest version — set LINKAI_VERSION=vX.Y.Z"
+    || err "could not resolve the latest version — set LINKAI_VERSION=X.Y.Z"
+  # Normalize to a bare version (no leading 'v'); tags, CDN paths, GitHub
+  # release paths and archive names are all versioned without the 'v'.
+  VERSION="${VERSION#v}"
 }
 
 # Build the download URL for a release asset by file name.
@@ -214,9 +217,9 @@ install_binary() {
   arch="$(detect_arch)"
   resolve_version
 
-  # goreleaser strips the leading 'v' in {{ .Version }} for archive names.
-  ver_no_v="${VERSION#v}"
-  archive="${BINARY}_${ver_no_v}_${os}_${arch}.tar.gz"
+  # VERSION is normalized to a bare version by resolve_version; both the CDN /
+  # GitHub path segment and the archive name use it verbatim.
+  archive="${BINARY}_${VERSION}_${os}_${arch}.tar.gz"
   url="$(asset_url "$archive")"
 
   tmp="$(mktemp -d 2>/dev/null || mktemp -d -t linkai)"

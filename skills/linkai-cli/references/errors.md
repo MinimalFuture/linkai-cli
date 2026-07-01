@@ -24,11 +24,11 @@ When a command fails because of a missing scope:
    > `linkai auth login --scope "<existing scopes> <missing>"`
    > then re-run the original request.
 
-4. **Never run `auth login` yourself** — it opens a browser and waits for human approval.
+4. Only run `auth login` after the user agrees — it needs them to authorize in a browser. Use the two-step flow in [auth.md](auth.md).
 
 ## Not logged in / expired
 
-`auth status` returns `valid` / `needs_refresh` / `expired` (or "not logged in"). On `expired` or absent token, ask the user to run `linkai auth login`. Auto-refresh is handled by the CLI when status is `needs_refresh`, so you usually won't see that case.
+`auth status` returns `valid` / `needs_refresh` / `expired` (or "not logged in"). On `expired` or absent token, run the two-step login in [auth.md](auth.md). Auto-refresh is handled by the CLI when status is `needs_refresh`, so you usually won't see that case.
 
 ## Resource not found
 

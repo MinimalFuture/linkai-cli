@@ -26,7 +26,7 @@ set -euo pipefail
 : "${CDN_REGION:?CDN_REGION is required}"
 : "${CDN_DOMAIN:?CDN_DOMAIN is required}"
 
-VERSION="$RELEASE_VERSION"
+VERSION="${RELEASE_VERSION#v}"   # strip leading 'v' → path is cli/0.1.0/
 PREFIX="cli"                     # path prefix under the CDN host
 DIST="dist"                      # goreleaser output dir
 WORK="$(mktemp -d)"

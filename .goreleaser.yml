@@ -7,9 +7,9 @@ before:
     - mkdir -p dist
     # Agent skill archive (fetched by install.sh / install.ps1 and the CDN).
     - sh -c 'tar -C skills -czf dist/linkai-cli-skill.tar.gz linkai-cli'
-    # Plain-text pointer to the current version, so the CDN installer can
-    # resolve "latest" without a releases API.
-    - sh -c 'printf "%s" "{{ .Tag }}" > dist/latest.txt'
+    # Plain-text pointer to the current version (bare, no leading 'v'), so the
+    # CDN installer can resolve "latest" without a releases API.
+    - sh -c 'printf "%s" "{{ .Version }}" > dist/latest.txt'
 
 builds:
   - main: .
@@ -36,7 +36,6 @@ archives:
         format: zip
     files:
       - README.md
-      - README.zh.md
       - LICENSE*
 
 checksum:

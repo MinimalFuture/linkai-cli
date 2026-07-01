@@ -68,6 +68,9 @@ function Resolve-Version {
   if ($script:Version -eq 'latest' -or -not $script:Version) {
     Write-Err 'could not resolve the latest version — set $env:LINKAI_VERSION'
   }
+  # Normalize to a bare version (no leading 'v'); tags, CDN/GitHub paths and
+  # archive names are all versioned without the 'v'.
+  $script:Version = $script:Version -replace '^v', ''
 }
 
 function Get-AssetUrl {
@@ -83,8 +86,7 @@ function Install-Binary {
     if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
   } else { 'amd64' }
 
-  $verNoV  = $script:Version -replace '^v', ''
-  $archive = "$($Binary)_$($verNoV)_windows_$arch.zip"
+  $archive = "$($Binary)_$($script:Version)_windows_$arch.zip"
   $url     = Get-AssetUrl $archive
 
   $tmp = Join-Path $env:TEMP ("linkai-" + [System.Guid]::NewGuid().ToString('N'))

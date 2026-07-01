@@ -1,6 +1,6 @@
 ---
 name: linkai-cli
-description: Invoke LinkAI platform services via the `linkai` CLI — chat with AI apps, RAG search over knowledge bases, generate images/video/audio, query connected databases, run workflows, execute plugins, manage account/credits. Use when the user references "linkai", a LinkAI app, knowledge base, workflow, plugin, or asks to generate AI content / query a managed database. Optimized for non-interactive agent use (JSON output, no streaming, no interactive prompts).
+description: LinkAI is an all-in-one agent platform; the `linkai` CLI lets an agent tap its capabilities — AI models (chat, image/video/audio generation) and platform resources (knowledge bases, databases, workflows, plugins, apps). Use when an agent needs these AI capabilities or LinkAI platform resources.
 ---
 
 # LinkAI CLI (agent edition)
@@ -28,7 +28,7 @@ Then verify: `linkai --version`. On Windows use `irm https://cdn.link-ai.tech/cl
 | `chat` | non-streaming is automatic when output is piped (agent case); add `--no-stream` to force it | full reply in one block |
 | `score buy` | add `--agent` | returns `qr_base64`, not ASCII QR |
 | `knowledge delete` | add `--force` | skips confirmation prompt |
-| `auth login` | use the **non-blocking flow** (see below) — never the plain blocking `auth login` | needs a browser; must not block a tool call |
+| `auth login` | use the two-step flow (see below) | login needs the user to authorize in a browser |
 | Long async tasks | `video gen` polls internally — just wait | don't re-poll |
 | Unknown command/flags | run `linkai <command> --help` | `--help` is the authoritative source when a reference is missing |
 
@@ -43,6 +43,7 @@ Then verify: `linkai --version`. On Windows use `irm https://cdn.link-ai.tech/cl
 | Plugin | `linkai plugin ...` | [plugin.md](references/plugin.md) |
 | Workflow | `linkai workflow ...` | [workflow.md](references/workflow.md) |
 | App / Model / Account / Credits | `linkai app/model/account/score ...` | [admin.md](references/admin.md) |
+| Login / auth status | `linkai auth ...` | [auth.md](references/auth.md) |
 | Exit codes & scope recovery | — | [errors.md](references/errors.md) |
 
 ## Decision flow
@@ -55,29 +56,24 @@ Then verify: `linkai --version`. On Windows use `irm https://cdn.link-ai.tech/cl
 
 ## Pre-flight
 
-Before the first LinkAI call in a session, verify auth: `linkai auth status --json`. If status is not `valid`, run the non-blocking login flow below.
+Before the first LinkAI call in a session, verify auth: `linkai auth status --json`. If status is not `valid`, run the login flow below.
 
-## Login (non-blocking, agent flow)
+## Login (agent flow)
 
-Never run the plain `linkai auth login` — it blocks up to several minutes waiting for the browser. Instead:
+Login needs the user to authorize in a browser, so run it in two non-blocking steps instead of the plain `linkai auth login` (which waits for that authorization):
 
-1. **Get the URL** (returns instantly):
+1. Get the URL and send it to the user to authorize:
 
    ```bash
    linkai auth login --no-wait --json
-   # → {"verification_url":"...","device_code":"xxx","next_action":{"command":"...","instruction":"..."}}
    ```
 
-   Send `verification_url` to the user and ask them to open it and authorize. The `next_action` field tells you the exact next command.
-
-2. **Poll with a bounded wait** (each call blocks at most ~60s, then returns):
+2. Poll until the user finishes (each call returns within `--wait` seconds):
 
    ```bash
-   linkai auth login --device-code xxx --wait 60 --json
+   linkai auth login --device-code <code> --wait 60 --json
    ```
 
-   - `event=authorization_pending` → user hasn't finished; re-run the SAME command.
-   - `event=authorization_complete` → done, proceed.
-   - `event=authorization_failed` → stop (expired or denied); restart from step 1.
+   Re-run the same command while `event` is `authorization_pending`; stop on `authorization_complete` or `authorization_failed`.
 
-   Keep polling on `pending` until complete or the code expires (~5 min). Do not block indefinitely.
+See [auth.md](references/auth.md) for the JSON fields and event handling.
