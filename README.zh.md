@@ -63,7 +63,17 @@ irm https://cdn.link-ai.tech/cli/install.ps1 | iex
 脚本会下载预编译二进制、自动配置 PATH，并把 Agent Skill 安装到常见 AI 工具目录（Claude Code / Cursor / Codex / CowAgent 等）。
 
 <details>
-<summary>脚本环境变量 & 其他安装方式</summary>
+<summary>其他安装方式（Homebrew / Go / 二进制 / 源码）</summary>
+
+- **Homebrew：** `brew install MinimalFuture/tap/linkai`
+- **Go：** `go install github.com/MinimalFuture/linkai-cli@latest`
+- **二进制：** 从 [GitHub Releases](https://github.com/MinimalFuture/linkai-cli/releases/latest) 下载解压后放入 PATH。
+- **源码：** `git clone` 后 `make build && make install`。
+
+</details>
+
+<details>
+<summary>安装脚本环境变量</summary>
 
 | 变量 | 说明 | 默认 |
 |------|------|------|
@@ -71,11 +81,6 @@ irm https://cdn.link-ai.tech/cli/install.ps1 | iex
 | `LINKAI_INSTALL_DIR` | 二进制安装目录 | 自动选择（优先已在 PATH 的目录） |
 | `LINKAI_SOURCE` | 下载源 `cdn` / `github` | `cdn`（不可达自动回退 GitHub） |
 | `LINKAI_NO_SKILL` | 设为 `1` 跳过 Skill 安装 | — |
-
-- **Homebrew：** `brew install MinimalFuture/tap/linkai`
-- **Go：** `go install github.com/MinimalFuture/linkai-cli@latest`
-- **二进制：** 从 [GitHub Releases](https://github.com/MinimalFuture/linkai-cli/releases/latest) 下载解压后放入 PATH。
-- **源码：** `git clone` 后 `make build && make install`。
 
 </details>
 

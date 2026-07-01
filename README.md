@@ -63,7 +63,17 @@ irm https://cdn.link-ai.tech/cli/install.ps1 | iex
 The script downloads the pre-built binary, sets up your `PATH`, and installs the agent skill into common AI tool directories (Claude Code, Cursor, Codex, CowAgent, etc.).
 
 <details>
-<summary>Script environment variables & other install methods</summary>
+<summary>Other install methods (Homebrew / Go / Binary / Source)</summary>
+
+- **Homebrew:** `brew install MinimalFuture/tap/linkai`
+- **Go:** `go install github.com/MinimalFuture/linkai-cli@latest`
+- **Binary:** download from [GitHub Releases](https://github.com/MinimalFuture/linkai-cli/releases/latest), extract, and put it on your `PATH`.
+- **Source:** `git clone`, then `make build && make install`.
+
+</details>
+
+<details>
+<summary>Install script environment variables</summary>
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -71,11 +81,6 @@ The script downloads the pre-built binary, sets up your `PATH`, and installs the
 | `LINKAI_INSTALL_DIR` | Binary install directory | Auto (prefers a directory already on `PATH`) |
 | `LINKAI_SOURCE` | Download source: `cdn` / `github` | `cdn` (falls back to GitHub if unreachable) |
 | `LINKAI_NO_SKILL` | Set to `1` to skip installing the skill | — |
-
-- **Homebrew:** `brew install MinimalFuture/tap/linkai`
-- **Go:** `go install github.com/MinimalFuture/linkai-cli@latest`
-- **Binary:** download from [GitHub Releases](https://github.com/MinimalFuture/linkai-cli/releases/latest), extract, and put it on your `PATH`.
-- **Source:** `git clone`, then `make build && make install`.
 
 </details>
 
