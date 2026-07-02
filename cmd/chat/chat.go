@@ -22,6 +22,7 @@ type ChatOptions struct {
 	DryRun    bool
 	NoStream  bool
 	App       string
+	Model     string
 	SessionID string
 	Message   string
 }
@@ -46,8 +47,14 @@ func NewCmdChat(f *cmdutil.Factory, runF func(*ChatOptions) error) *cobra.Comman
 
 	cmd := &cobra.Command{
 		Use:   "chat <message>",
-		Short: "Chat with an application",
-		Args:  cobra.ExactArgs(1),
+		Short: "Chat with an application or a model directly",
+		Long: `Chat with an application or call a model directly.
+
+Provide --app to chat with a configured application, or --model to call an LLM
+directly (model codes come from 'linkai model list', type LLM). When both are
+given, --model overrides the app's configured model. When neither is given, the
+platform default model is used.`,
+		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			permission.RequiredKey: permission.ChatSend.String(),
 		},
@@ -77,9 +84,9 @@ func NewCmdChat(f *cmdutil.Factory, runF func(*ChatOptions) error) *cobra.Comman
 	cmd.Flags().BoolVar(&opts.NoStream, "no-stream", false, "disable streaming, wait for full reply")
 	cmd.Flags().BoolVar(&stream, "stream", false, "force streaming output (default when stdout is a terminal)")
 	cmd.MarkFlagsMutuallyExclusive("stream", "no-stream")
-	cmd.Flags().StringVar(&opts.App, "app", "", "application code")
+	cmd.Flags().StringVar(&opts.App, "app", "", "application code (omit to call a model directly with --model)")
+	cmd.Flags().StringVar(&opts.Model, "model", "", "model code to call directly (from 'linkai model list', type LLM); overrides the app's model when --app is also given")
 	cmd.Flags().StringVar(&opts.SessionID, "session", "", "session ID for multi-turn conversation")
-	_ = cmd.MarkFlagRequired("app")
 
 	return cmd
 }
@@ -94,6 +101,9 @@ func chatRun(opts *ChatOptions) error {
 		"app_code": opts.App,
 		"message":  opts.Message,
 		"stream":   !opts.NoStream,
+	}
+	if opts.Model != "" {
+		body["model"] = opts.Model
 	}
 	if opts.SessionID != "" {
 		body["session_id"] = opts.SessionID
