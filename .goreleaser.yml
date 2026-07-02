@@ -57,7 +57,8 @@ nfpms:
 
 homebrew_casks:
   - name: linkai
-    binary: linkai
+    binaries:
+      - linkai
     # Auto-skip when HOMEBREW_TAP_GITHUB_TOKEN is unset, so first-time releases
     # work before the homebrew-tap repo + PAT are provisioned.
     skip_upload: '{{ if and (isEnvSet "HOMEBREW_TAP_GITHUB_TOKEN") (ne (index .Env "HOMEBREW_TAP_GITHUB_TOKEN") "") }}false{{ else }}true{{ end }}'

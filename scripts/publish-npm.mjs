@@ -93,11 +93,15 @@ npmPublish(mainStage);
 console.log("done");
 
 function locateBinary({ goOS, goArch, bin }) {
-  // GoReleaser v2 default layout: dist/{binary}_{os}_{arch}{,_v1,_v2,...}/{binary}
+  // GoReleaser v2 build dirs are named "{id}_{os}_{arch}{,_v1,_v8.0,...}", where
+  // {id} defaults to the project name (linkai-cli), not the binary name. Match
+  // any dir ending in "_{os}_{arch}[_variant]" and containing the binary, so we
+  // don't depend on the exact id or GOAMD64/GOARM variant suffix.
+  const re = new RegExp(`_${goOS}_${goArch}(_[^/]+)?$`);
   const entries = readdirSync(distDir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
-    .filter((n) => n.startsWith(`linkai_${goOS}_${goArch}`));
+    .filter((n) => re.test(n));
   for (const dir of entries) {
     const candidate = join(distDir, dir, bin);
     if (existsSync(candidate)) return candidate;
