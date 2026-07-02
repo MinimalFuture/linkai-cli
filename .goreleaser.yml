@@ -3,13 +3,6 @@ version: 2
 before:
   hooks:
     - go mod tidy
-    # Runs after --clean wipes ./dist, so these extra release assets survive.
-    - mkdir -p dist
-    # Agent skill archive (fetched by install.sh / install.ps1 and the CDN).
-    - sh -c 'tar -C skills -czf dist/linkai-cli-skill.tar.gz linkai-cli'
-    # Plain-text pointer to the current version (bare, no leading 'v'), so the
-    # CDN installer can resolve "latest" without a releases API.
-    - sh -c 'printf "%s" "{{ .Version }}" > dist/latest.txt'
 
 builds:
   - main: .
@@ -29,13 +22,14 @@ builds:
       - arm64
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
     files:
       - README.md
+      - README.zh.md
       - LICENSE*
 
 checksum:
@@ -61,21 +55,18 @@ nfpms:
       - rpm
     bindir: /usr/bin
 
-brews:
+homebrew_casks:
   - name: linkai
+    binary: linkai
     # Auto-skip when HOMEBREW_TAP_GITHUB_TOKEN is unset, so first-time releases
     # work before the homebrew-tap repo + PAT are provisioned.
-    skip_upload: '{{ if eq .Env.HOMEBREW_TAP_GITHUB_TOKEN "" }}true{{ else }}false{{ end }}'
+    skip_upload: '{{ if and (isEnvSet "HOMEBREW_TAP_GITHUB_TOKEN") (ne (index .Env "HOMEBREW_TAP_GITHUB_TOKEN") "") }}false{{ else }}true{{ end }}'
     repository:
       owner: MinimalFuture
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/MinimalFuture/linkai-cli
     description: LinkAI platform CLI
-    install: |
-      bin.install "linkai"
-    test: |
-      system "#{bin}/linkai", "--version"
 
 release:
   header: |
@@ -98,16 +89,10 @@ release:
 
     **Homebrew:**
     ```
-    brew install MinimalFuture/tap/linkai
+    brew install --cask MinimalFuture/tap/linkai
     ```
 
     **Go:**
     ```
     go install github.com/MinimalFuture/linkai-cli@latest
     ```
-  # The agent skill archive and latest.txt are produced by the release workflow
-  # (see .github/workflows/release.yml "Package skill" step) and uploaded here
-  # so both the install script and the CDN sync can fetch them by name.
-  extra_files:
-    - glob: ./dist/linkai-cli-skill.tar.gz
-    - glob: ./dist/latest.txt

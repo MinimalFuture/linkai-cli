@@ -71,6 +71,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Generate the agent skill archive + a bare-version pointer and attach them
+      # to the release. Done here (not via GoReleaser hooks) because writing into
+      # dist during GoReleaser's own run trips its "dist is not empty" guard, and
+      # its after-hooks run too late for extra_files. The CDN sync step below
+      # reads both files back out of dist/.
+      - name: Package extra release assets
+        env:
+          TAG: ${{ steps.rel.outputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          tar -C skills -czf dist/linkai-cli-skill.tar.gz linkai-cli
+          printf '%s' "${TAG#v}" > dist/latest.txt
+          gh release upload "$TAG" \
+            dist/linkai-cli-skill.tar.gz dist/latest.txt --clobber
+
       # Publish auth is bootstrap-friendly:
       #   * If the NPM_TOKEN secret is set, authenticate with it and DISABLE
       #     provenance (OIDC is unavailable in token mode). This is needed for
