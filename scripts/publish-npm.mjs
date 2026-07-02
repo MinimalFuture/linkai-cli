@@ -35,14 +35,19 @@ if (!rawVersion) {
 }
 const version = rawVersion.replace(/^v/, "");
 
-// (goOS, goArch) → (npm name, node process.platform, node process.arch, binary name)
+// (goOS, goArch) → npm sub-package metadata.
+//   pkgOS   segment used in the package NAME. Windows uses "windows" (not
+//           "win32") because npm rejects "win32" in package names as spam.
+//   nodeOS  value for the package.json "os" field — must be the Node
+//           process.platform value ("win32"), so npm installs it on Windows.
+//   nodeArch value for the "cpu" field and the wrapper's process.arch lookup.
 const targets = [
-  { goOS: "linux", goArch: "amd64", nodeOS: "linux", nodeArch: "x64", bin: "linkai" },
-  { goOS: "linux", goArch: "arm64", nodeOS: "linux", nodeArch: "arm64", bin: "linkai" },
-  { goOS: "darwin", goArch: "amd64", nodeOS: "darwin", nodeArch: "x64", bin: "linkai" },
-  { goOS: "darwin", goArch: "arm64", nodeOS: "darwin", nodeArch: "arm64", bin: "linkai" },
-  { goOS: "windows", goArch: "amd64", nodeOS: "win32", nodeArch: "x64", bin: "linkai.exe" },
-  { goOS: "windows", goArch: "arm64", nodeOS: "win32", nodeArch: "arm64", bin: "linkai.exe" },
+  { goOS: "linux", goArch: "amd64", pkgOS: "linux", nodeOS: "linux", nodeArch: "x64", bin: "linkai" },
+  { goOS: "linux", goArch: "arm64", pkgOS: "linux", nodeOS: "linux", nodeArch: "arm64", bin: "linkai" },
+  { goOS: "darwin", goArch: "amd64", pkgOS: "darwin", nodeOS: "darwin", nodeArch: "x64", bin: "linkai" },
+  { goOS: "darwin", goArch: "arm64", pkgOS: "darwin", nodeOS: "darwin", nodeArch: "arm64", bin: "linkai" },
+  { goOS: "windows", goArch: "amd64", pkgOS: "windows", nodeOS: "win32", nodeArch: "x64", bin: "linkai.exe" },
+  { goOS: "windows", goArch: "arm64", pkgOS: "windows", nodeOS: "win32", nodeArch: "arm64", bin: "linkai.exe" },
 ];
 
 if (existsSync(stagingDir)) rmSync(stagingDir, { recursive: true, force: true });
@@ -51,7 +56,7 @@ mkdirSync(stagingDir, { recursive: true });
 const subTemplateRaw = readFileSync(subTemplate, "utf8");
 
 for (const t of targets) {
-  const fullName = `linkai-cli-${t.nodeOS}-${t.nodeArch}`;
+  const fullName = `linkai-cli-${t.pkgOS}-${t.nodeArch}`;
   const subName = fullName;
   const stageRoot = join(stagingDir, subName);
   mkdirSync(join(stageRoot, "bin"), { recursive: true });
@@ -117,14 +122,18 @@ function npmPublish(cwd) {
   if (process.env.NPM_NO_PROVENANCE !== "1") {
     args.push("--provenance");
   }
-  const result = spawnSync("npm", args, {
-    cwd,
-    stdio: "inherit",
-    env: process.env,
-  });
-  if (result.status !== 0) {
-    fail(`npm publish failed in ${cwd} (exit ${result.status})`);
+  // Capture output (not inherit) so we can treat an already-published version
+  // as success, making re-runs idempotent when an earlier attempt published
+  // some packages before failing on a later one.
+  const result = spawnSync("npm", args, { cwd, encoding: "utf8", env: process.env });
+  const out = `${result.stdout || ""}${result.stderr || ""}`;
+  process.stdout.write(out);
+  if (result.status === 0) return;
+  if (/EPUBLISHCONFLICT|cannot publish over|previously published versions/i.test(out)) {
+    console.log(`==> already published, skipping (${cwd})`);
+    return;
   }
+  fail(`npm publish failed in ${cwd} (exit ${result.status})`);
 }
 
 function fail(msg) {

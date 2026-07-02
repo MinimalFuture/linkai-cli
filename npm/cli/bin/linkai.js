@@ -4,7 +4,10 @@
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
-const pkg = `linkai-cli-${process.platform}-${process.arch}`;
+// npm rejects package names containing "win32" as spam, so the Windows
+// sub-packages are named "windows" instead. Map the Node platform accordingly.
+const platform = process.platform === "win32" ? "windows" : process.platform;
+const pkg = `linkai-cli-${platform}-${process.arch}`;
 const binName = process.platform === "win32" ? "linkai.exe" : "linkai";
 
 let binary;
