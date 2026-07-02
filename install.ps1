@@ -16,7 +16,6 @@ $ErrorActionPreference = 'Stop'
 
 $Repo       = 'MinimalFuture/linkai-cli'
 $Binary     = 'linkai'
-$SkillName  = 'linkai-cli'
 $CdnBase    = 'https://cdn.link-ai.tech/cli'
 $GithubBase = "https://github.com/$Repo/releases/download"
 
@@ -138,47 +137,28 @@ function Add-ToUserPath {
   Write-Info '  Open a new terminal for the PATH change to take effect everywhere.'
 }
 
+# The skill (SKILL.md + references/) ships embedded in the binary, so we drive
+# `linkai skill install` rather than downloading a separate archive. This keeps
+# the installed skill in lockstep with the binary version — no CDN round-trip.
 function Install-Skill {
-  Resolve-Version
-  $archive = "$SkillName-skill.tar.gz"
-  $url     = Get-AssetUrl $archive
-
-  $tmp = Join-Path $env:TEMP ("linkai-skill-" + [System.Guid]::NewGuid().ToString('N'))
-  New-Item -ItemType Directory -Path $tmp -Force | Out-Null
-  try {
-    Write-Info '==> Installing agent skill'
-    $tarPath = Join-Path $tmp $archive
-    try {
-      Invoke-WebRequest -Uri $url -OutFile $tarPath -UseBasicParsing
-    } catch {
-      Write-Info 'Could not download the skill archive; skipping skill install.'
+  # Prefer the binary we just installed; otherwise fall back to a linkai.exe
+  # already on PATH.
+  $bin = Join-Path $InstallDir "$Binary.exe"
+  if (-not (Test-Path $bin)) {
+    $cmd = Get-Command $Binary -ErrorAction SilentlyContinue
+    if ($cmd) { $bin = $cmd.Source }
+    else {
+      Write-Info "'$Binary' not found; install the binary first, then run '$Binary skill install'."
       return
     }
+  }
 
-    $src = Join-Path $tmp 'skill'
-    New-Item -ItemType Directory -Path $src -Force | Out-Null
-    # tar is available on Windows 10+ (bsdtar).
-    tar -xzf $tarPath -C $src 2>$null
-    if (Test-Path (Join-Path $src "$SkillName\SKILL.md")) { $src = Join-Path $src $SkillName }
-    if (-not (Test-Path (Join-Path $src 'SKILL.md'))) {
-      Write-Info 'SKILL.md not found in archive; skipping.'
-      return
-    }
-
-    $installed = 0
-    foreach ($agentDir in '.agents\skills', 'cow\skills', '.claude\skills', '.cursor\skills', '.codex\skills', '.gemini\skills', '.windsurf\skills', '.qoder\skills') {
-      $parent = Join-Path $env:USERPROFILE (Split-Path $agentDir)
-      if ($agentDir -ne '.agents\skills' -and -not (Test-Path $parent)) { continue }
-      $dest = Join-Path $env:USERPROFILE "$agentDir\$SkillName"
-      if (Test-Path $dest) { Remove-Item -Path $dest -Recurse -Force }
-      New-Item -ItemType Directory -Path $dest -Force | Out-Null
-      Copy-Item -Path (Join-Path $src '*') -Destination $dest -Recurse -Force
-      Write-Ok "Skill -> ~\$agentDir\$SkillName"
-      $installed++
-    }
-    if ($installed -eq 0) { Write-Info '  (no agent homes detected)' }
-  } finally {
-    Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Info '==> Installing agent skill'
+  # `skill install` prints its own per-destination lines. A non-zero exit (e.g.
+  # a build without the embedded skill) is non-fatal.
+  & $bin skill install
+  if ($LASTEXITCODE -ne 0) {
+    Write-Info 'Skill install skipped (this binary may not embed the skill).'
   }
 }
 

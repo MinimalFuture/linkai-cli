@@ -51,30 +51,29 @@ log "coscli: $COSCLI_URL"
 curl -fsSL -o "$COSCLI" "$COSCLI_URL"
 chmod +x "$COSCLI"
 
-CONF="$WORK/coscli.conf"
-cat > "$CONF" <<EOF
-cos:
-  base:
-    secretid: ${CDN_SECRET_ID}
-    secretkey: ${CDN_SECRET_KEY}
-    sessiontoken: ""
-    protocol: https
-  buckets:
-    - name: ${CDN_BUCKET}
-      alias: origin
-      region: ${CDN_REGION}
-      endpoint: cos.${CDN_REGION}.myqcloud.com
-      ofs: false
-EOF
+# Talk to COS with flags only (--init-skip skips the interactive config; -i/-k/-e
+# are then required). This avoids any config-file schema mismatch across coscli
+# versions. CDN_BUCKET must be the full bucket name incl. APPID (e.g.
+# name-1250000000).
+ENDPOINT="cos.${CDN_REGION}.myqcloud.com"
+COS_FLAGS=(--init-skip=true -i "$CDN_SECRET_ID" -k "$CDN_SECRET_KEY" -e "$ENDPOINT")
 
 cos_put() {
   # cos_put <local-file> <remote-key>
-  # Use the bucket ALIAS (origin) defined in the config so coscli resolves the
-  # endpoint automatically. Accessing by raw bucket name would additionally
-  # require an -e endpoint flag on every call.
   local src="$1" key="$2"
-  "$COSCLI" -c "$CONF" cp "$src" "cos://origin/${key}" >/dev/null
+  "$COSCLI" cp "$src" "cos://${CDN_BUCKET}/${key}" "${COS_FLAGS[@]}"
   log "uploaded → ${key}"
+}
+
+# Diagnostics: print coscli version + verify the bucket is reachable before
+# uploading, so a failure surfaces a clear cause instead of a bare exit 1.
+log "==> coscli version"
+"$COSCLI" --version || true
+log "==> Verifying bucket access (endpoint=${ENDPOINT}, bucket=${CDN_BUCKET})"
+"$COSCLI" ls "cos://${CDN_BUCKET}/" "${COS_FLAGS[@]}" || {
+  echo "ERROR: cannot access bucket ${CDN_BUCKET} at ${ENDPOINT}." >&2
+  echo "Check CDN_BUCKET (must include APPID, e.g. name-1250000000), CDN_REGION, and the key's COS permissions." >&2
+  exit 1
 }
 
 # ── Upload versioned artifacts ────────────────────────────────────────────────

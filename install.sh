@@ -12,7 +12,8 @@
 #   LINKAI_INSTALL_DIR  where to put the binary             (default: smart — see below)
 #   LINKAI_SOURCE       download source: cdn | github       (default: cdn, GitHub fallback)
 #   LINKAI_NO_SKILL     set to 1 to skip installing the agent skill
-#   LINKAI_SKILL_ONLY   set to 1 to install only the skill (skip the binary)
+#   LINKAI_SKILL_ONLY   set to 1 to (re)install only the skill from an already
+#                       installed `linkai` binary (skip downloading the binary)
 #   LINKAI_NO_MODIFY_PATH set to 1 to never edit shell rc files (only print a hint)
 #
 # Install directory resolution (smart, in order):
@@ -24,7 +25,6 @@ set -eu
 
 REPO="MinimalFuture/linkai-cli"
 BINARY="linkai"
-SKILL_NAME="linkai-cli"
 
 CDN_BASE="https://cdn.link-ai.tech/cli"
 GITHUB_BASE="https://github.com/${REPO}/releases/download"
@@ -34,6 +34,11 @@ SOURCE="${LINKAI_SOURCE:-cdn}"
 NO_SKILL="${LINKAI_NO_SKILL:-0}"
 SKILL_ONLY="${LINKAI_SKILL_ONLY:-0}"
 NO_MODIFY_PATH="${LINKAI_NO_MODIFY_PATH:-0}"
+
+# Path to the binary install_skill should drive; set by install_binary once the
+# binary is in place. In skill-only mode it stays empty and we fall back to a
+# `linkai` already on PATH.
+INSTALLED_BINARY=""
 
 # ── Output helpers ────────────────────────────────────────────────────────────
 
@@ -251,7 +256,11 @@ install_binary() {
 
   install_dir="$(resolve_install_dir)"
   mkdir -p "$install_dir"
+  # INSTALLED_BINARY is read by install_skill so it can drive the freshly
+  # installed binary's `skill install` (which unpacks the embedded skill),
+  # avoiding a separate CDN download that could drift from the binary version.
   install_path="$install_dir/$BINARY"
+  INSTALLED_BINARY="$install_path"
 
   if [ -w "$install_dir" ]; then
     mv "$tmp/$BINARY" "$install_path"
@@ -269,54 +278,29 @@ install_binary() {
 #
 # Installs the agent skill into every detected agent home so tools like Claude
 # Code / Cursor / Codex can drive the CLI out of the box.
+#
+# The skill (SKILL.md + references/) ships embedded in the binary, so we simply
+# drive `linkai skill install` rather than downloading a separate archive. This
+# guarantees the installed skill always matches the binary version — no CDN
+# round-trip, no version drift.
 install_skill() {
-  resolve_version
-  archive="${SKILL_NAME}-skill.tar.gz"
-  url="$(asset_url "$archive")"
-
-  tmp="$(mktemp -d 2>/dev/null || mktemp -d -t linkai-skill)"
+  # Prefer the binary we just installed; otherwise (skill-only mode) fall back
+  # to a `linkai` already on PATH.
+  bin="$INSTALLED_BINARY"
+  if [ -z "$bin" ]; then
+    if command -v "$BINARY" >/dev/null 2>&1; then
+      bin="$BINARY"
+    else
+      info "⚠ '$BINARY' not found; install the binary first, then run '$BINARY skill install'."
+      return 0
+    fi
+  fi
 
   info "==> Installing agent skill"
-  if ! fetch_to "$url" "$tmp/$archive" 2>/dev/null; then
-    info "⚠ Could not download the skill archive; skipping skill install."
-    rm -rf "$tmp"
-    return 0
-  fi
-
-  src="$tmp/skill"
-  mkdir -p "$src"
-  tar -xzf "$tmp/$archive" -C "$src" 2>/dev/null || {
-    info "⚠ Could not extract the skill archive; skipping."
-    rm -rf "$tmp"
-    return 0
-  }
-  # The archive may wrap content in a top-level SKILL_NAME/ dir.
-  if [ -f "$src/$SKILL_NAME/SKILL.md" ]; then
-    src="$src/$SKILL_NAME"
-  fi
-  [ -f "$src/SKILL.md" ] || { info "⚠ SKILL.md not found in archive; skipping."; rm -rf "$tmp"; return 0; }
-
-  installed=0
-  for agent_dir in \
-    ".agents/skills" "cow/skills" ".claude/skills" ".cursor/skills" ".codex/skills" \
-    ".gemini/skills" ".windsurf/skills" ".qoder/skills"
-  do
-    parent="$HOME/$(dirname "$agent_dir")"
-    # Only install into agent homes that already exist (except the generic
-    # .agents fallback, always attempted).
-    if [ "$agent_dir" != ".agents/skills" ] && [ ! -d "$parent" ]; then
-      continue
-    fi
-    dest="$HOME/$agent_dir/$SKILL_NAME"
-    rm -rf "$dest"
-    mkdir -p "$dest"
-    cp -R "$src/." "$dest/" 2>/dev/null || cp -r "$src/." "$dest/"
-    ok "Skill → ~/$agent_dir/$SKILL_NAME"
-    installed=$((installed + 1))
-  done
-  [ "$installed" -eq 0 ] && info "  (no agent homes detected)"
-
-  rm -rf "$tmp"
+  # `skill install` prints its own per-destination ✓ lines to stdout; let them
+  # through. A non-zero exit (e.g. a build without the embedded skill) is
+  # non-fatal — the binary is already usable without the skill.
+  "$bin" skill install || info "⚠ Skill install skipped (this binary may not embed the skill)."
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -326,12 +310,12 @@ main() {
   info "LinkAI CLI installer"
   printf '\n'
 
-  [ "$SKILL_ONLY" != "1" ] && pick_source
-  [ "$SKILL_ONLY" = "1" ] && pick_source
-
   if [ "$SKILL_ONLY" = "1" ]; then
+    # Skill-only mode drives an existing `linkai` binary's embedded skill; no
+    # download source needed.
     install_skill
   else
+    pick_source
     install_binary
     [ "$NO_SKILL" != "1" ] && install_skill
   fi

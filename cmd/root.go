@@ -15,6 +15,7 @@ import (
 	knowledgeCmd  "github.com/MinimalFuture/linkai-cli/cmd/knowledge"
 	modelCmd      "github.com/MinimalFuture/linkai-cli/cmd/model"
 	pluginCmd     "github.com/MinimalFuture/linkai-cli/cmd/plugin"
+	skillCmd      "github.com/MinimalFuture/linkai-cli/cmd/skill"
 	videoCmd      "github.com/MinimalFuture/linkai-cli/cmd/video"
 	workflowCmd   "github.com/MinimalFuture/linkai-cli/cmd/workflow"
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
@@ -124,6 +125,10 @@ func Execute() int {
 		accountCmd.NewCmdAccount(f),
 		authCmd.NewCmdAuth(f),
 	)
+
+	// Utility commands (ungrouped, shown under "Additional Commands"): the skill
+	// bundle installer/reader needs no login, so it stays out of the groups above.
+	rootCmd.AddCommand(skillCmd.NewCmdSkill(f))
 
 	if err := rootCmd.Execute(); err != nil {
 		output.PrintError(f.IOStreams.ErrOut, f.IOStreams.IsTerminal, err.Error())
