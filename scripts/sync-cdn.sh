@@ -38,10 +38,17 @@ log() { printf '  %s\n' "$*"; }
 
 COSCLI="$WORK/coscli"
 log "==> Installing object-storage CLI"
-curl -fsSL -o "$COSCLI" \
-  "https://github.com/tencentyun/coscli/releases/latest/download/coscli-linux" \
-  || curl -fsSL -o "$COSCLI" \
-     "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux"
+# coscli release assets are versioned (e.g. coscli-v1.0.8-linux-amd64), so there
+# is no fixed "latest" filename. Resolve the linux-amd64 asset from the GitHub
+# API and download it by its exact URL.
+COSCLI_URL="$(
+  curl -fsSL "https://api.github.com/repos/tencentyun/coscli/releases/latest" \
+    | grep -oE '"browser_download_url": *"[^"]*linux-amd64"' \
+    | head -1 | sed -E 's/.*"(https[^"]+)"/\1/'
+)"
+[ -n "$COSCLI_URL" ] || { echo "could not resolve coscli download URL" >&2; exit 1; }
+log "coscli: $COSCLI_URL"
+curl -fsSL -o "$COSCLI" "$COSCLI_URL"
 chmod +x "$COSCLI"
 
 CONF="$WORK/coscli.conf"
@@ -51,17 +58,22 @@ cos:
     secretid: ${CDN_SECRET_ID}
     secretkey: ${CDN_SECRET_KEY}
     sessiontoken: ""
-buckets:
-  - name: ${CDN_BUCKET}
-    alias: origin
-    region: ${CDN_REGION}
-    endpoint: cos.${CDN_REGION}.myqcloud.com
+    protocol: https
+  buckets:
+    - name: ${CDN_BUCKET}
+      alias: origin
+      region: ${CDN_REGION}
+      endpoint: cos.${CDN_REGION}.myqcloud.com
+      ofs: false
 EOF
 
 cos_put() {
   # cos_put <local-file> <remote-key>
+  # Use the bucket ALIAS (origin) defined in the config so coscli resolves the
+  # endpoint automatically. Accessing by raw bucket name would additionally
+  # require an -e endpoint flag on every call.
   local src="$1" key="$2"
-  "$COSCLI" -c "$CONF" cp "$src" "cos://${CDN_BUCKET}/${key}" >/dev/null
+  "$COSCLI" -c "$CONF" cp "$src" "cos://origin/${key}" >/dev/null
   log "uploaded → ${key}"
 }
 
@@ -96,6 +108,7 @@ export TCCLI_SECRET_KEY="$CDN_SECRET_KEY"
 # CDN is a global service; purge all fixed-path URLs in one call.
 if tccli cdn PurgeUrlsCache \
     --cli-unfold-argument \
+    --region "$CDN_REGION" \
     --secretId "$CDN_SECRET_ID" \
     --secretKey "$CDN_SECRET_KEY" \
     --Urls "https://${CDN_DOMAIN}/${PREFIX}/install.sh" \
