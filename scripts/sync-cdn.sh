@@ -94,28 +94,63 @@ cos_put "$DIST/latest.txt" "${PREFIX}/latest.txt"
 # ── Refresh CDN cache for fixed-path files ────────────────────────────────────
 #
 # Versioned paths are immutable, so only the fixed-path files need purging.
-log "==> Refreshing CDN cache"
-TCCLI="$WORK/tccli-venv"
-python3 -m venv "$TCCLI"
-# shellcheck disable=SC1091
-. "$TCCLI/bin/activate"
-pip install --quiet tccli
+# Call the CDN PurgeUrlsCache API directly with curl + a TC3-HMAC-SHA256
+# signature (openssl). This is a single fast HTTPS request — no Python/tccli to
+# install. Best-effort: any failure just lets the files refresh on their TTL.
+log "==> Refreshing CDN cache (best-effort)"
 
-export TCCLI_SECRET_ID="$CDN_SECRET_ID"
-export TCCLI_SECRET_KEY="$CDN_SECRET_KEY"
+# hmac_sha256 <hex-or-string-key-mode> ... helpers
+_sha256hex() { printf '%s' "$1" | openssl dgst -sha256 | sed 's/^.* //'; }
+_hmac_key()  { printf '%s' "$2" | openssl dgst -sha256 -hmac "$1" | sed 's/^.* //'; }         # string key
+_hmac_hex()  { printf '%s' "$3" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$2" | sed 's/^.* //'; } # hex key
 
-# CDN is a global service; purge all fixed-path URLs in one call.
-if tccli cdn PurgeUrlsCache \
-    --cli-unfold-argument \
-    --region "$CDN_REGION" \
-    --secretId "$CDN_SECRET_ID" \
-    --secretKey "$CDN_SECRET_KEY" \
-    --Urls "https://${CDN_DOMAIN}/${PREFIX}/install.sh" \
-           "https://${CDN_DOMAIN}/${PREFIX}/install.ps1" \
-           "https://${CDN_DOMAIN}/${PREFIX}/latest.txt" >/dev/null 2>&1; then
+purge_cache() {
+  local host="cdn.tencentcloudapi.com" service="cdn" action="PurgeUrlsCache" version="2018-06-06"
+  local ts date payload chash creq scope sts kDate kService kSigning sig auth resp
+  ts="$(date +%s)"
+  date="$(date -u -d "@$ts" +%Y-%m-%d 2>/dev/null || date -u -r "$ts" +%Y-%m-%d)"
+  payload="{\"Urls\":[\"https://${CDN_DOMAIN}/${PREFIX}/install.sh\",\"https://${CDN_DOMAIN}/${PREFIX}/install.ps1\",\"https://${CDN_DOMAIN}/${PREFIX}/latest.txt\"]}"
+
+  chash="$(_sha256hex "$payload")"
+  creq="POST
+/
+
+content-type:application/json; charset=utf-8
+host:${host}
+x-tc-action:$(printf '%s' "$action" | tr '[:upper:]' '[:lower:]')
+
+content-type;host;x-tc-action
+${chash}"
+  scope="${date}/${service}/tc3_request"
+  sts="TC3-HMAC-SHA256
+${ts}
+${scope}
+$(_sha256hex "$creq")"
+
+  kDate="$(_hmac_key "TC3${CDN_SECRET_KEY}" "$date")"
+  kService="$(_hmac_hex '' "$kDate" "$service")"
+  kSigning="$(_hmac_hex '' "$kService" 'tc3_request')"
+  sig="$(_hmac_hex '' "$kSigning" "$sts")"
+  auth="TC3-HMAC-SHA256 Credential=${CDN_SECRET_ID}/${scope}, SignedHeaders=content-type;host;x-tc-action, Signature=${sig}"
+
+  resp="$(curl -fsS -m 30 -X POST "https://${host}/" \
+    -H "Authorization: ${auth}" \
+    -H "Content-Type: application/json; charset=utf-8" \
+    -H "Host: ${host}" \
+    -H "X-TC-Action: ${action}" \
+    -H "X-TC-Timestamp: ${ts}" \
+    -H "X-TC-Version: ${version}" \
+    -d "$payload" 2>&1)" || { echo "purge request failed: $resp" >&2; return 1; }
+  # A successful call has no top-level "Error"; anything else is a soft failure.
+  case "$resp" in
+    *'"Error"'*) echo "purge API error: $resp" >&2; return 1 ;;
+  esac
+  return 0
+}
+if purge_cache; then
   log "purged install.sh / install.ps1 / latest.txt"
 else
-  log "(cache purge failed or unavailable — files will refresh on TTL expiry)"
+  log "(cache purge skipped/failed — files will refresh on TTL expiry)"
 fi
 
 log "==> CDN sync complete"
