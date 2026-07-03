@@ -88,15 +88,12 @@ cos ls "cos://${CDN_BUCKET}/" >/dev/null || {
   exit 1
 }
 
-# ── Upload versioned artifacts ────────────────────────────────────────────────
-
-log "==> Uploading versioned artifacts (${VERSION})"
-for f in "$DIST"/*.tar.gz "$DIST"/*.zip "$DIST"/checksums.txt; do
-  [ -e "$f" ] || continue
-  cos_put "$f" "${PREFIX}/${VERSION}/$(basename "$f")"
-done
-
-# ── Upload fixed-path files ───────────────────────────────────────────────────
+# ── Upload fixed-path files FIRST ─────────────────────────────────────────────
+#
+# These are small (a few KB each) and are the entry points shared directly with
+# users/agents (install scripts, install guide, skill bundle, version pointer).
+# Upload them before the multi-MB platform binaries so they become available
+# almost immediately instead of waiting out the slow cross-border binary upload.
 
 log "==> Uploading fixed-path files"
 cos_put "install.sh"      "${PREFIX}/install.sh"
@@ -108,6 +105,17 @@ cos_put "skills/linkai-cli/references/install.md" "${PREFIX}/install.md"
 # Skill bundle at a fixed URL so it can be shared with an agent directly:
 #   https://<CDN_DOMAIN>/cli/linkai-cli-skill.zip
 [ -e "$DIST/linkai-cli-skill.zip" ] && cos_put "$DIST/linkai-cli-skill.zip" "${PREFIX}/linkai-cli-skill.zip"
+
+# ── Upload versioned artifacts ────────────────────────────────────────────────
+#
+# The large platform binaries / packages. Uploaded last because they are slow
+# and are only fetched by version-pinned installs, not the shared entry points.
+
+log "==> Uploading versioned artifacts (${VERSION})"
+for f in "$DIST"/*.tar.gz "$DIST"/*.zip "$DIST"/checksums.txt; do
+  [ -e "$f" ] || continue
+  cos_put "$f" "${PREFIX}/${VERSION}/$(basename "$f")"
+done
 
 # ── Refresh CDN cache for fixed-path files ────────────────────────────────────
 #

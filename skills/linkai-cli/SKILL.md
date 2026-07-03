@@ -1,6 +1,6 @@
 ---
 name: linkai-cli
-description: LinkAI is an all-in-one agent platform; the `linkai` CLI lets an agent tap its capabilities — AI models (chat, image/video/audio generation) and platform resources (knowledge bases, databases, workflows, plugins, apps). Use when an agent needs these AI capabilities or LinkAI platform resources.
+description: LinkAI is an all-in-one agent platform; the `linkai` CLI lets an agent tap its capabilities — AI models (chat, image/video/audio generation) and platform resources (apps, knowledge bases, databases, workflows, plugins). Use when an agent needs these AI capabilities or LinkAI platform resources.
 ---
 
 # LinkAI CLI (agent edition)
