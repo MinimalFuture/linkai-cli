@@ -16,12 +16,14 @@ import (
 	modelCmd      "github.com/MinimalFuture/linkai-cli/cmd/model"
 	pluginCmd     "github.com/MinimalFuture/linkai-cli/cmd/plugin"
 	skillCmd      "github.com/MinimalFuture/linkai-cli/cmd/skill"
+	updateCmd     "github.com/MinimalFuture/linkai-cli/cmd/update"
 	videoCmd      "github.com/MinimalFuture/linkai-cli/cmd/video"
 	workflowCmd   "github.com/MinimalFuture/linkai-cli/cmd/workflow"
 	"github.com/MinimalFuture/linkai-cli/internal/auth"
 	"github.com/MinimalFuture/linkai-cli/internal/cmdutil"
 	"github.com/MinimalFuture/linkai-cli/internal/output"
 	"github.com/MinimalFuture/linkai-cli/internal/permission"
+	"github.com/MinimalFuture/linkai-cli/internal/selfupdate"
 )
 
 // version and buildDate are set via ldflags at build time.
@@ -127,14 +129,29 @@ func Execute() int {
 	)
 
 	// Utility commands (ungrouped, shown under "Additional Commands"): the skill
-	// bundle installer/reader needs no login, so it stays out of the groups above.
+	// bundle installer/reader and the self-updater need no login, so they stay
+	// out of the groups above.
 	rootCmd.AddCommand(skillCmd.NewCmdSkill(f))
+	rootCmd.AddCommand(updateCmd.NewCmdUpdate(f, resolveVersion()))
 
 	if err := rootCmd.Execute(); err != nil {
 		output.PrintError(f.IOStreams.ErrOut, f.IOStreams.IsTerminal, err.Error())
 		return output.ExitCodeFrom(err)
 	}
+	maybeNotifyUpdate(f)
 	return 0
+}
+
+// maybeNotifyUpdate prints a one-line hint to stderr when a newer CLI version is
+// available. It is throttled (once per day) and only runs for interactive
+// terminal sessions, so scripts and agents (piped output) are never nagged.
+func maybeNotifyUpdate(f *cmdutil.Factory) {
+	if !f.IOStreams.IsTerminal {
+		return
+	}
+	if latest := selfupdate.MaybeNotifyUpdate(resolveVersion()); latest != "" {
+		output.PrintUpdateNotice(f.IOStreams.ErrOut, resolveVersion(), latest)
+	}
 }
 
 // usageTemplate mirrors cobra's default usage template with one change: it does

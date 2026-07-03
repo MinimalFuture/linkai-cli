@@ -36,12 +36,30 @@ checksum:
   name_template: 'checksums.txt'
 
 changelog:
+  # Use GitHub's compare API so entries render as "message (#PR) by @author"
+  # with proper links, instead of a flat list of raw commit lines.
+  use: github
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
       - '^ci:'
+      - '^chore:'
+      - '^style:'
+      - '^refactor:'
+      - 'Merge pull request'
+      - 'Merge branch'
+      - '^bump '
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
 
 nfpms:
   - id: linkai-pkg
@@ -70,30 +88,22 @@ homebrew_casks:
     description: LinkAI platform CLI
 
 release:
-  header: |
+  footer: |
     ## Install
 
-    **npm (recommended):**
-    ```
-    npm i -g linkai-cli
-    ```
-
-    **One-liner (Linux/macOS):**
-    ```
-    curl -fsSL https://cdn.link-ai.tech/cli/install.sh | sh
+    ```bash
+    npm i -g linkai-cli                                      # npm
+    curl -fsSL https://cdn.link-ai.tech/cli/install.sh | sh  # Linux/macOS
     ```
 
-    **Windows (PowerShell):**
-    ```
-    irm https://cdn.link-ai.tech/cli/install.ps1 | iex
-    ```
+    <details><summary>Other install methods</summary>
 
-    **Homebrew:**
+    ```bash
+    irm https://cdn.link-ai.tech/cli/install.ps1 | iex       # Windows (PowerShell)
+    brew install --cask MinimalFuture/tap/linkai            # Homebrew
+    go install github.com/MinimalFuture/linkai-cli@latest    # Go
     ```
-    brew install --cask MinimalFuture/tap/linkai
-    ```
+    </details>
 
-    **Go:**
-    ```
-    go install github.com/MinimalFuture/linkai-cli@latest
-    ```
+    ---
+    **Full docs:** [README](https://github.com/MinimalFuture/linkai-cli#readme) · **All changes:** {{ .PreviousTag }}...{{ .Tag }}

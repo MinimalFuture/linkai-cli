@@ -91,3 +91,9 @@ func PrintError(w io.Writer, isTerminal bool, msg string) {
 		fmt.Fprintf(w, "✗ %s\n", msg)
 	}
 }
+
+// PrintUpdateNotice writes a short "new version available" hint to stderr. It is
+// intentionally quiet (a single dim line) so it never disrupts command output.
+func PrintUpdateNotice(w io.Writer, current, latest string) {
+	fmt.Fprintf(w, "\n\033[2m[linkai] update available: %s → %s — run `linkai update`\033[0m\n", current, latest)
+}
