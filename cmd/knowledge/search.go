@@ -3,6 +3,8 @@ package knowledge
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -19,10 +21,12 @@ type SearchOptions struct {
 	Code    string
 	Query   string
 	K       int
+	Mode    string
 }
 
 type SearchResult struct {
-	List []SearchHit `json:"list"`
+	List              []SearchHit `json:"list"`
+	KeywordSearchList []SearchHit `json:"keyword_search_list,omitempty"`
 }
 
 type SearchHit struct {
@@ -59,15 +63,42 @@ func NewCmdKnowledgeSearch(f *cmdutil.Factory, runF func(*SearchOptions) error) 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format")
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "print request without executing")
 	cmd.Flags().IntVar(&opts.K, "k", 5, "number of results to return")
+	cmd.Flags().StringVar(&opts.Mode, "mode", "", "search mode: vector, keyword, or hybrid (default hybrid)")
 
 	return cmd
 }
 
+// searchModes maps user-friendly flag values (and the backend enum values
+// themselves) to the enum expected by the backend. When --mode is omitted we
+// default to hybrid search.
+var searchModes = map[string]string{
+	"":               "HYBRID_SEARCH",
+	"hybrid":         "HYBRID_SEARCH",
+	"vector":         "VECTOR_SEARCH",
+	"keyword":        "KEYWORD_SEARCH",
+	"hybrid_search":  "HYBRID_SEARCH",
+	"vector_search":  "VECTOR_SEARCH",
+	"keyword_search": "KEYWORD_SEARCH",
+}
+
+func resolveSearchMode(mode string) (string, error) {
+	if m, ok := searchModes[strings.ToLower(strings.TrimSpace(mode))]; ok {
+		return m, nil
+	}
+	return "", fmt.Errorf("invalid --mode %q: expected one of vector, keyword, hybrid", mode)
+}
+
 func searchRun(opts *SearchOptions) error {
+	mode, err := resolveSearchMode(opts.Mode)
+	if err != nil {
+		return err
+	}
+
 	body := map[string]interface{}{
-		"code":  opts.Code,
-		"query": opts.Query,
-		"k":     opts.K,
+		"code":       opts.Code,
+		"query":      opts.Query,
+		"k":          opts.K,
+		"searchMode": mode,
 	}
 
 	if opts.DryRun {
@@ -97,26 +128,41 @@ func searchRun(opts *SearchOptions) error {
 		return output.PrintJSON(opts.Factory.IOStreams.Out, result)
 	}
 
-	if len(result.List) == 0 {
+	if len(result.List) == 0 && len(result.KeywordSearchList) == 0 {
 		fmt.Fprintln(opts.Factory.IOStreams.Out, "No results found.")
 		return nil
 	}
 
-	for i, hit := range result.List {
+	out := opts.Factory.IOStreams.Out
+	// When hybrid search returns keyword hits, label the vector section so the
+	// two result sets are distinguishable.
+	if len(result.KeywordSearchList) > 0 {
+		fmt.Fprintln(out, "== Vector search ==")
+	}
+	printSearchHits(out, result.List)
+
+	if len(result.KeywordSearchList) > 0 {
+		fmt.Fprintln(out, "== Keyword search ==")
+		printSearchHits(out, result.KeywordSearchList)
+	}
+
+	return nil
+}
+
+func printSearchHits(out io.Writer, hits []SearchHit) {
+	for i, hit := range hits {
 		scoreStr := fmt.Sprintf("similarity=%.4f", hit.Similarity)
 		if hit.RerankScore > 0 {
 			scoreStr += fmt.Sprintf("  rerank=%.4f", hit.RerankScore)
 		}
-		fmt.Fprintf(opts.Factory.IOStreams.Out, "[%d] %s  type=%s  source=%s\n", i+1, scoreStr, hit.DataType, hit.Source)
+		fmt.Fprintf(out, "[%d] %s  type=%s  source=%s\n", i+1, scoreStr, hit.DataType, hit.Source)
 		if hit.DataType == "QA" {
-			fmt.Fprintf(opts.Factory.IOStreams.Out, "    Q: %s\n", truncateRunes(hit.Question, 200))
-			fmt.Fprintf(opts.Factory.IOStreams.Out, "    A: %s\n\n", truncateRunes(hit.Answer, 200))
+			fmt.Fprintf(out, "    Q: %s\n", truncateRunes(hit.Question, 200))
+			fmt.Fprintf(out, "    A: %s\n\n", truncateRunes(hit.Answer, 200))
 		} else {
-			fmt.Fprintf(opts.Factory.IOStreams.Out, "    %s\n\n", truncateRunes(hit.Text, 200))
+			fmt.Fprintf(out, "    %s\n\n", truncateRunes(hit.Text, 200))
 		}
 	}
-
-	return nil
 }
 
 func truncateRunes(s string, n int) string {

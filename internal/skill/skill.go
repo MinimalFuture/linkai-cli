@@ -40,6 +40,8 @@ var agentSkillDirs = []string{
 	".gemini/skills",
 	".windsurf/skills",
 	".qoder/skills",
+	".openclaw/skills",
+	".hermes/skills",
 }
 
 // SkillInfo describes a skill available for listing.
