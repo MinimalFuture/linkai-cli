@@ -85,6 +85,14 @@ mkdirSync(join(mainStage, "bin"), { recursive: true });
 copyFileSync(join(mainPkgDir, "bin", "linkai.js"), join(mainStage, "bin", "linkai.js"));
 chmodSync(join(mainStage, "bin", "linkai.js"), 0o755);
 
+// Ship the repo README + LICENSE so the npmjs.com package page renders proper
+// docs (npm always includes a README.md found in the package root). Using the
+// repo root files keeps a single source of truth instead of a duplicated copy.
+for (const doc of ["README.md", "LICENSE"]) {
+  const src = join(repoRoot, doc);
+  if (existsSync(src)) copyFileSync(src, join(mainStage, doc));
+}
+
 const mainPkg = JSON.parse(readFileSync(join(mainPkgDir, "package.json"), "utf8"));
 mainPkg.version = version;
 mainPkg.optionalDependencies = Object.fromEntries(
