@@ -47,7 +47,7 @@ changelog:
   # URL. `.Logins` (GitHub usernames, '@'-prefixed) is only populated in
   # `github` mode; on the very first release GoReleaser has no previous tag and
   # falls back to `git` mode, where `.Logins` is empty and the author is omitted.
-  format: '[{{ .SHA | substr 0 7 }}](https://github.com/MinimalFuture/linkai-cli/commit/{{ .SHA }}) {{ .Message }}{{ if .Logins }} ({{ .Logins | englishJoin }}){{ end }}'
+  format: '[{{ slice .SHA 0 7 }}](https://github.com/MinimalFuture/linkai-cli/commit/{{ .SHA }}) {{ .Message }}{{ if .Logins }} ({{ .Logins | englishJoin }}){{ end }}'
   filters:
     exclude:
       - '^docs:'
