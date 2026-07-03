@@ -43,7 +43,7 @@ The CLI exposes two kinds of capabilities: **platform resources** (manage and us
 
 ## Installation
 
-### Option 1 — npm (recommended)
+### Option 1 — npm
 
 Requires Node.js 16 or later. npm installs the command to its global bin directory, which is already on your `PATH`:
 
@@ -61,6 +61,12 @@ irm https://cdn.link-ai.tech/cli/install.ps1 | iex
 ```
 
 The script downloads the pre-built binary, sets up your `PATH`, and installs the agent skill into common AI tool directories (Claude Code, Cursor, Codex, CowAgent, etc.).
+
+### Option 3 — let an agent install it
+
+Send an agent this message; it will install the CLI, fetch the skill, and start using it:
+
+> Read https://cdn.link-ai.tech/cli/install.md and follow it to install the CLI and skill, then start using it.
 
 <details>
 <summary>Other install methods (Homebrew / Go / Binary / Source)</summary>

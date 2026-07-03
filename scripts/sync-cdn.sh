@@ -5,6 +5,7 @@
 #   cli/<version>/*           versioned binaries, checksums, skill archive
 #   cli/install.sh            latest install script (fixed path)
 #   cli/install.ps1           latest Windows install script (fixed path)
+#   cli/install.md            agent install guide (fixed path)
 #   cli/latest.txt            pointer to the current version (fixed path)
 #
 # The fixed-path files are cache-purged so users always get the newest copy.
@@ -48,7 +49,7 @@ COSCLI_URL="$(
 )"
 [ -n "$COSCLI_URL" ] || { echo "could not resolve coscli download URL" >&2; exit 1; }
 log "coscli: $COSCLI_URL"
-curl -fsSL -o "$COSCLI" "$COSCLI_URL"
+timeout 120 curl -fsSL -o "$COSCLI" "$COSCLI_URL"
 chmod +x "$COSCLI"
 
 # Talk to COS with flags only (--init-skip skips the interactive config; -i/-k/-e
@@ -58,19 +59,27 @@ chmod +x "$COSCLI"
 ENDPOINT="cos.${CDN_REGION}.myqcloud.com"
 COS_FLAGS=(--init-skip=true -i "$CDN_SECRET_ID" -k "$CDN_SECRET_KEY" -e "$ENDPOINT")
 
+# Wrap every coscli call: redirect stdin from /dev/null (so it can never block
+# on an interactive prompt) and time-box it. The timeout is generous (15 min per
+# call) because GitHub's overseas runners upload to COS in mainland China very
+# slowly (~10-20 KB/s), so a few-MB artifact can legitimately take minutes.
+cos() { timeout 900 "$COSCLI" "$@" </dev/null; }
+
 cos_put() {
   # cos_put <local-file> <remote-key>
   local src="$1" key="$2"
-  "$COSCLI" cp "$src" "cos://${CDN_BUCKET}/${key}" "${COS_FLAGS[@]}"
-  log "uploaded → ${key}"
+  log "uploading → ${key}"
+  # Discard coscli's per-chunk progress spam; keep stderr for real errors.
+  cos cp "$src" "cos://${CDN_BUCKET}/${key}" >/dev/null
+  log "uploaded  → ${key}"
 }
 
 # Diagnostics: print coscli version + verify the bucket is reachable before
 # uploading, so a failure surfaces a clear cause instead of a bare exit 1.
 log "==> coscli version"
-"$COSCLI" --version || true
+cos --version || true
 log "==> Verifying bucket access (endpoint=${ENDPOINT}, bucket=${CDN_BUCKET})"
-"$COSCLI" ls "cos://${CDN_BUCKET}/" "${COS_FLAGS[@]}" || {
+cos ls "cos://${CDN_BUCKET}/" >/dev/null || {
   echo "ERROR: cannot access bucket ${CDN_BUCKET} at ${ENDPOINT}." >&2
   echo "Check CDN_BUCKET (must include APPID, e.g. name-1250000000), CDN_REGION, and the key's COS permissions." >&2
   exit 1
@@ -90,6 +99,12 @@ log "==> Uploading fixed-path files"
 cos_put "install.sh"      "${PREFIX}/install.sh"
 cos_put "install.ps1"     "${PREFIX}/install.ps1"
 cos_put "$DIST/latest.txt" "${PREFIX}/latest.txt"
+# Agent install guide at a fixed URL so it can be shared with an agent directly:
+#   https://<CDN_DOMAIN>/cli/install.md
+cos_put "skills/linkai-cli/references/install.md" "${PREFIX}/install.md"
+# Skill bundle at a fixed URL so it can be shared with an agent directly:
+#   https://<CDN_DOMAIN>/cli/linkai-cli-skill.zip
+[ -e "$DIST/linkai-cli-skill.zip" ] && cos_put "$DIST/linkai-cli-skill.zip" "${PREFIX}/linkai-cli-skill.zip"
 
 # ── Refresh CDN cache for fixed-path files ────────────────────────────────────
 #
@@ -109,7 +124,7 @@ purge_cache() {
   local ts date payload chash creq scope sts kDate kService kSigning sig auth resp
   ts="$(date +%s)"
   date="$(date -u -d "@$ts" +%Y-%m-%d 2>/dev/null || date -u -r "$ts" +%Y-%m-%d)"
-  payload="{\"Urls\":[\"https://${CDN_DOMAIN}/${PREFIX}/install.sh\",\"https://${CDN_DOMAIN}/${PREFIX}/install.ps1\",\"https://${CDN_DOMAIN}/${PREFIX}/latest.txt\"]}"
+  payload="{\"Urls\":[\"https://${CDN_DOMAIN}/${PREFIX}/install.sh\",\"https://${CDN_DOMAIN}/${PREFIX}/install.ps1\",\"https://${CDN_DOMAIN}/${PREFIX}/latest.txt\",\"https://${CDN_DOMAIN}/${PREFIX}/install.md\",\"https://${CDN_DOMAIN}/${PREFIX}/linkai-cli-skill.zip\"]}"
 
   chash="$(_sha256hex "$payload")"
   creq="POST
@@ -148,7 +163,7 @@ $(_sha256hex "$creq")"
   return 0
 }
 if purge_cache; then
-  log "purged install.sh / install.ps1 / latest.txt"
+  log "purged install.sh / install.ps1 / latest.txt / install.md / linkai-cli-skill.zip"
 else
   log "(cache purge skipped/failed — files will refresh on TTL expiry)"
 fi

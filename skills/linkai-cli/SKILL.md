@@ -7,18 +7,7 @@ description: LinkAI is an all-in-one agent platform; the `linkai` CLI lets an ag
 
 This skill is optimized for agent invocation, not interactive human use. Default to JSON, non-streaming, non-interactive flags.
 
-## Install (if `linkai` is not found)
-
-If the `linkai` command is missing, install it first (no interaction needed):
-
-```bash
-# Preferred when Node.js is available (npm's global bin is already on PATH):
-npm i -g linkai-cli
-# Zero-dependency fallback (macOS/Linux):
-curl -fsSL https://cdn.link-ai.tech/cli/install.sh | sh
-```
-
-Then verify: `linkai --version`. On Windows use `irm https://cdn.link-ai.tech/cli/install.ps1 | iex`.
+> If `linkai` is not installed, see the fallback install note at the [end of this file](#install-fallback).
 
 ## Agent defaults — always apply
 
@@ -77,3 +66,15 @@ Login needs the user to authorize in a browser, so run it in two non-blocking st
    Re-run the same command while `event` is `authorization_pending`; stop on `authorization_complete` or `authorization_failed`.
 
 See [auth.md](references/auth.md) for the JSON fields and event handling.
+
+## Install (fallback) {#install-fallback}
+
+If the `linkai` command is missing, install it (no interaction needed):
+
+```bash
+npm i -g linkai-cli   # when Node.js is available
+```
+
+If npm is unavailable or fails, see [install.md](references/install.md) for the
+install-script and manual-download methods (macOS/Linux/Windows). Verify with
+`linkai --version`.

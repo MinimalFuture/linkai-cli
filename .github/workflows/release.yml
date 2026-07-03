@@ -83,9 +83,12 @@ jobs:
         run: |
           mkdir -p dist
           tar -C skills -czf dist/linkai-cli-skill.tar.gz linkai-cli
+          # Also ship a .zip of the skill for easy manual download (share the
+          # fixed CDN URL with an agent; it unzips to a ready-to-use skill dir).
+          ( cd skills && zip -qr ../dist/linkai-cli-skill.zip linkai-cli )
           printf '%s' "${TAG#v}" > dist/latest.txt
           gh release upload "$TAG" \
-            dist/linkai-cli-skill.tar.gz dist/latest.txt --clobber
+            dist/linkai-cli-skill.tar.gz dist/linkai-cli-skill.zip dist/latest.txt --clobber
 
       # Publish auth is bootstrap-friendly:
       #   * If the NPM_TOKEN secret is set, authenticate with it and DISABLE
