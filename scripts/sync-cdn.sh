@@ -59,11 +59,14 @@ chmod +x "$COSCLI"
 ENDPOINT="cos.${CDN_REGION}.myqcloud.com"
 COS_FLAGS=(--init-skip=true -i "$CDN_SECRET_ID" -k "$CDN_SECRET_KEY" -e "$ENDPOINT")
 
-# Wrap every coscli call: redirect stdin from /dev/null (so it can never block
-# on an interactive prompt) and time-box it. The timeout is generous (15 min per
-# call) because GitHub's overseas runners upload to COS in mainland China very
-# slowly (~10-20 KB/s), so a few-MB artifact can legitimately take minutes.
-cos() { timeout 900 "$COSCLI" "$@" </dev/null; }
+# Wrap every coscli call: inject COS_FLAGS (auth + --init-skip) into EVERY
+# invocation — without them coscli treats each call as a first run and drops
+# into its interactive "Welcome to coscli!" config prompt, which then fails on
+# the /dev/null stdin. Also redirect stdin from /dev/null (so it can never block
+# on a prompt) and time-box it. The timeout is generous (15 min per call)
+# because GitHub's overseas runners upload to COS in mainland China very slowly
+# (~10-20 KB/s), so a few-MB artifact can legitimately take minutes.
+cos() { timeout 900 "$COSCLI" "$@" "${COS_FLAGS[@]}" </dev/null; }
 
 cos_put() {
   # cos_put <local-file> <remote-key>

@@ -36,10 +36,18 @@ checksum:
   name_template: 'checksums.txt'
 
 changelog:
-  # Use GitHub's compare API so entries render as "message (#PR) by @author"
-  # with proper links, instead of a flat list of raw commit lines.
+  # Use GitHub's compare API so entries carry the author's GitHub login (@user)
+  # and PR links, instead of a flat list of raw commit lines.
   use: github
   sort: asc
+  # Render each entry as a clickable short-hash link + message + author:
+  #   [3b33114](https://github.com/OWNER/REPO/commit/<full-sha>) message (@login)
+  # A bare hash is NOT auto-linked in release notes, so we build the markdown
+  # link by hand: `substr 0 7 .SHA` for the display text, full `.SHA` for the
+  # URL. `.Logins` (GitHub usernames, '@'-prefixed) is only populated in
+  # `github` mode; on the very first release GoReleaser has no previous tag and
+  # falls back to `git` mode, where `.Logins` is empty and the author is omitted.
+  format: '[{{ .SHA | substr 0 7 }}](https://github.com/MinimalFuture/linkai-cli/commit/{{ .SHA }}) {{ .Message }}{{ if .Logins }} ({{ .Logins | englishJoin }}){{ end }}'
   filters:
     exclude:
       - '^docs:'
