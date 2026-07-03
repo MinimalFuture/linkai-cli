@@ -51,7 +51,13 @@ LinkAI CLI 核心提供两类能力：**平台资源**（管理和使用在 Link
 npm i -g linkai-cli
 ```
 
-### 方式二：一键安装脚本（零依赖）
+### 方式二：让 Agent 自行安装
+
+把下面这句话发给 Agent，它会自行安装 CLI、下载 Skill 并开始使用：
+
+> 阅读 https://cdn.link-ai.tech/cli/install.md 并按其中的步骤安装 CLI 与 Skill，然后开始使用。
+
+### 方式三：一键安装脚本（零依赖）
 
 ```bash
 # macOS / Linux
@@ -61,12 +67,6 @@ irm https://cdn.link-ai.tech/cli/install.ps1 | iex
 ```
 
 脚本会下载预编译二进制、自动配置 PATH，并把 Agent Skill 安装到常见 AI 工具目录（Claude Code / Cursor / Codex / CowAgent 等）。
-
-### 方式三：让 Agent 自行安装
-
-把下面这句话发给 Agent，它会自行安装 CLI、下载 Skill 并开始使用：
-
-> 阅读 https://cdn.link-ai.tech/cli/install.md 并按其中的步骤安装 CLI 与 Skill，然后开始使用。
 
 <details>
 <summary>其他安装方式（Homebrew / Go / 二进制 / 源码）</summary>
