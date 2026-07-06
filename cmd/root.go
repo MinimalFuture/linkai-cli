@@ -74,6 +74,15 @@ func Execute() int {
 	rootCmd.SetHelpCommand(newHelpCmd(rootCmd))
 	rootCmd.SetUsageTemplate(usageTemplate)
 
+	// Accept --json on EVERY command. The agent skill tells agents to always
+	// append --json, so a command without a meaningful JSON mode (e.g. logout)
+	// must still tolerate the flag instead of erroring with "unknown flag".
+	// This persistent flag is the universal fallback; commands that declare
+	// their own local --json shadow it and drive real JSON output. It is hidden
+	// so it doesn't clutter every command's help.
+	rootCmd.PersistentFlags().Bool("json", false, "output in JSON format")
+	_ = rootCmd.PersistentFlags().MarkHidden("json")
+
 	// PersistentPreRunE runs before every subcommand.
 	// It silences usage on error and enforces declared permission checks.
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
