@@ -12,6 +12,8 @@ func NewCmdDatabase(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCmdDatabaseList(f, nil))
+	cmd.AddCommand(NewCmdDatabaseCreate(f, nil))
+	cmd.AddCommand(NewCmdDatabaseCreateTable(f, nil))
 	cmd.AddCommand(NewCmdDatabaseTables(f, nil))
 	cmd.AddCommand(NewCmdDatabaseDescribe(f, nil))
 	cmd.AddCommand(NewCmdDatabaseExec(f, nil))
