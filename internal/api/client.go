@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 
 	"github.com/MinimalFuture/linkai-cli/internal/output"
 )
@@ -87,6 +90,43 @@ func (c *Client) Post(ctx context.Context, path string, body interface{}) (*Resp
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	return c.do(req)
+}
+
+// PostMultipart sends a multipart/form-data POST: string form fields plus a
+// single file read from filePath (field name fileField). Used for uploads such
+// as knowledge-base file import. The whole file is buffered in memory, which is
+// fine for the CLI's bounded upload sizes.
+func (c *Client) PostMultipart(ctx context.Context, path string, fields map[string]string, fileField, filePath string) (*Response, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, output.ErrValidation("cannot open file %q: %v", filePath, err)
+	}
+	defer f.Close()
+
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	for k, v := range fields {
+		if err := mw.WriteField(k, v); err != nil {
+			return nil, fmt.Errorf("failed to write form field %q: %w", k, err)
+		}
+	}
+	part, err := mw.CreateFormFile(fileField, filepath.Base(filePath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+	if _, err := io.Copy(part, f); err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+	if err := mw.Close(); err != nil {
+		return nil, fmt.Errorf("failed to finalize multipart body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+path, &buf)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
 	return c.do(req)
 }
 
