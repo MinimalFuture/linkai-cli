@@ -16,6 +16,9 @@ $ErrorActionPreference = 'Stop'
 
 $Repo       = 'MinimalFuture/linkai-cli'
 $Binary     = 'linkai'
+# ArchivePrefix must match GoReleaser's archive name_template ProjectName
+# ("linkai-cli"), which differs from the binary name ("linkai").
+$ArchivePrefix = 'linkai-cli'
 $CdnBase    = 'https://cdn.link-ai.tech/cli'
 $GithubBase = "https://github.com/$Repo/releases/download"
 
@@ -85,7 +88,7 @@ function Install-Binary {
     if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
   } else { 'amd64' }
 
-  $archive = "$($Binary)_$($script:Version)_windows_$arch.zip"
+  $archive = "$($ArchivePrefix)_$($script:Version)_windows_$arch.zip"
   $url     = Get-AssetUrl $archive
 
   $tmp = Join-Path $env:TEMP ("linkai-" + [System.Guid]::NewGuid().ToString('N'))

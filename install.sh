@@ -25,6 +25,10 @@ set -eu
 
 REPO="MinimalFuture/linkai-cli"
 BINARY="linkai"
+# ARCHIVE_PREFIX must match GoReleaser's archive name_template ProjectName
+# ({{ .ProjectName }} = "linkai-cli"), which differs from the binary name
+# ("linkai"). Release archives are named linkai-cli_<ver>_<os>_<arch>.tar.gz.
+ARCHIVE_PREFIX="linkai-cli"
 
 CDN_BASE="https://cdn.link-ai.tech/cli"
 GITHUB_BASE="https://github.com/${REPO}/releases/download"
@@ -223,8 +227,9 @@ install_binary() {
   resolve_version
 
   # VERSION is normalized to a bare version by resolve_version; both the CDN /
-  # GitHub path segment and the archive name use it verbatim.
-  archive="${BINARY}_${VERSION}_${os}_${arch}.tar.gz"
+  # GitHub path segment and the archive name use it verbatim. The archive is
+  # named after the project (linkai-cli), not the binary (linkai).
+  archive="${ARCHIVE_PREFIX}_${VERSION}_${os}_${arch}.tar.gz"
   url="$(asset_url "$archive")"
 
   tmp="$(mktemp -d 2>/dev/null || mktemp -d -t linkai)"
