@@ -52,6 +52,11 @@ func Execute() int {
 
 	f := cmdutil.NewDefault()
 
+	// Kick off a throttled, best-effort update check in the background so the
+	// latest version is cached for the next run without adding latency here.
+	// NotifyIfDue (at the end) only reads that cache.
+	go selfupdate.RefreshLatestInBackground(resolveVersion())
+
 	versionStr := resolveVersion()
 	if buildDate != "" {
 		versionStr += " (" + buildDate + ")"
@@ -152,13 +157,11 @@ func Execute() int {
 }
 
 // maybeNotifyUpdate prints a one-line hint to stderr when a newer CLI version is
-// available. It is throttled (once per day) and only runs for interactive
-// terminal sessions, so scripts and agents (piped output) are never nagged.
+// available. The notice goes to stderr (never stdout), so it does not corrupt
+// JSON parsed by agents; it is throttled to at most once per day and reads only
+// the locally cached latest version (no network on this path).
 func maybeNotifyUpdate(f *cmdutil.Factory) {
-	if !f.IOStreams.IsTerminal {
-		return
-	}
-	if latest := selfupdate.MaybeNotifyUpdate(resolveVersion()); latest != "" {
+	if latest := selfupdate.NotifyIfDue(resolveVersion()); latest != "" {
 		output.PrintUpdateNotice(f.IOStreams.ErrOut, resolveVersion(), latest)
 	}
 }
