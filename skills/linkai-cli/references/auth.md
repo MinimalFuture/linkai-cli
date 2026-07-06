@@ -1,6 +1,6 @@
 # Auth (agent flow)
 
-Login uses OAuth Device Flow: the user opens a URL and authorizes in a browser. The plain `linkai auth login` blocks until that finishes, so agents use the two-step flow below.
+Login uses OAuth Device Flow: the user opens a URL and authorizes in a browser. After you send the link, do NOT stop and wait for the user to reply in chat — go straight to your next tool call and poll, repeating until authorization completes.
 
 ## Check status first
 
@@ -10,7 +10,7 @@ linkai auth status --json
 
 `status` is `valid`, `needs_refresh`, or `expired` (or the user is not logged in). Auto-refresh is handled by the CLI on `needs_refresh`, so a login is only needed on `expired` / not logged in.
 
-## Step 1 — get the authorization URL
+## Get the authorization URL
 
 ```bash
 linkai auth login --no-wait --json
@@ -26,23 +26,25 @@ Returns immediately:
 }
 ```
 
-Send `verification_url` to the user and ask them to open it and authorize. `next_action.command` is the exact command to run in step 2.
+Tell the user to open `verification_url` and authorize. Then **make your next tool call the poll below** — do NOT stop to wait for the user to say "done".
 
-## Step 2 — poll with a bounded wait
+## Poll until complete (next tool call, keep going)
+
+Run `next_action.command` (a bounded poll that blocks up to 60s):
 
 ```bash
 linkai auth login --device-code <code> --wait 60 --json
 ```
 
-`--wait N` blocks for at most N seconds, then returns one of:
+It returns one of:
 
 | `event` | Meaning | Action |
 |---|---|---|
-| `authorization_pending` | User hasn't finished yet | Re-run the same command |
-| `authorization_complete` | Logged in | Proceed |
-| `authorization_failed` | Code expired or denied | Restart from step 1 |
+| `authorization_pending` | User hasn't finished yet | **Re-run the same command as your next tool call** (loop) |
+| `authorization_complete` | Logged in | Proceed to the user's original request |
+| `authorization_failed` | Code expired or denied | Restart from "Get the authorization URL" |
 
-Keep polling on `pending` until complete. The device code expires after ~5 minutes.
+Keep re-running the poll on `pending` (each call blocks ~60s, so looping is not busy-spinning) until you get `complete` or `failed`. The device code expires after ~5 minutes; if the user is away that long, it is fine to stop and let them re-trigger.
 
 ## Requesting extra scopes
 

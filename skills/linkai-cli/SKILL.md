@@ -17,7 +17,7 @@ This skill is optimized for agent invocation, not interactive human use. Default
 | `chat` | non-streaming is automatic when output is piped (agent case); add `--no-stream` to force it | full reply in one block |
 | `score buy` | add `--agent` | returns `qr_base64`, not ASCII QR |
 | `knowledge delete` | add `--force` | skips confirmation prompt |
-| `auth login` | use the two-step flow (see below) | login needs the user to authorize in a browser |
+| `auth login` | send the link, then poll on your next tool call (see below) | login needs the user to authorize in a browser |
 | Long async tasks | `video gen` polls internally — just wait | don't re-poll |
 | Unknown command/flags | run `linkai <command> --help` | `--help` is the authoritative source when a reference is missing |
 
@@ -49,21 +49,21 @@ Before the first LinkAI call in a session, verify auth: `linkai auth status --js
 
 ## Login (agent flow)
 
-Login needs the user to authorize in a browser, so run it in two non-blocking steps instead of the plain `linkai auth login` (which waits for that authorization):
+Login needs the user to authorize in a browser. After you send the link, do NOT stop to wait for the user to reply — **make the poll your next tool call**.
 
-1. Get the URL and send it to the user to authorize:
+1. Get the URL and tell the user to open it and authorize:
 
    ```bash
    linkai auth login --no-wait --json
    ```
 
-2. Poll until the user finishes (each call returns within `--wait` seconds):
+2. On your **next tool call**, poll until they finish — each call blocks up to `--wait` seconds:
 
    ```bash
    linkai auth login --device-code <code> --wait 60 --json
    ```
 
-   Re-run the same command while `event` is `authorization_pending`; stop on `authorization_complete` or `authorization_failed`.
+   Re-run the same command while `event` is `authorization_pending` (the poll blocks, so looping is not busy-spinning); stop on `authorization_complete` (then continue the user's original request) or `authorization_failed`.
 
 See [auth.md](references/auth.md) for the JSON fields and event handling.
 
