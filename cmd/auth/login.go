@@ -143,7 +143,7 @@ func loginRun(opts *LoginOptions) error {
 			"expires_in":       authResp.ExpiresIn,
 			// Machine-readable guidance for an agent's next tool call.
 			"next_action": map[string]interface{}{
-				"instruction": "Show verification_url to the user and tell them to open it, log in and authorize (this may take a minute or two — scanning a QR code, logging in, etc.). Then run next_command to check status. Each call blocks up to 60s. It returns event=authorization_pending (NOT a failure — the user just hasn't finished yet; re-run the SAME command to keep waiting), authorization_complete (done), or authorization_failed (stop). Keep polling on 'pending' until complete or expires_in seconds have elapsed since this response.",
+				"instruction": "Show verification_url to the user and tell them to open it, log in and authorize (this may take a minute or two — scanning a QR code, logging in, etc.). Then, in this same turn (do not end your turn to wait for the user), run command as your next tool call to check status. Each call blocks up to 60s. It returns event=authorization_pending (NOT a failure — the user just hasn't finished yet; re-run the SAME command to keep waiting), authorization_complete (done), or authorization_failed (stop). Keep polling on 'pending' until complete or expires_in seconds have elapsed since this response.",
 				"command":     nextCommand,
 				"poll":        true,
 			},
@@ -226,7 +226,7 @@ func loginPollDeviceCode(opts *LoginOptions, cfg *config.Config) error {
 					"event":       "authorization_pending",
 					"device_code": opts.DeviceCode,
 					"next_action": map[string]interface{}{
-						"instruction": "The user has not finished authorizing yet. This is NOT an error. Re-run the SAME command to keep waiting. Stop only on authorization_complete or authorization_failed.",
+						"instruction": "The user has not finished authorizing yet. This is NOT an error. Re-run the SAME command as your next tool call in this same turn (do not end your turn) to keep waiting. Stop only on authorization_complete or authorization_failed.",
 						"command":     sameCommand,
 						"poll":        true,
 					},
