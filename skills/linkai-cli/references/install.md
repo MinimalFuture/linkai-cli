@@ -98,6 +98,18 @@ linkai --version          # confirm the install
 linkai auth status --json # check login; if not valid, log in
 ```
 
+## 4. Update an existing install
+
+`linkai update` upgrades in place (auto-detects npm / Homebrew / go / script).
+
+```bash
+linkai update --check --json   # report only: current_version, latest_version, update_available
+linkai update --json           # perform the upgrade
+```
+
+A stale CLI is the usual cause of `unknown flag` / missing commands — if you see
+an "update available" notice on stderr, run `linkai update`.
+
 Login needs a browser authorization step. For the full usage guide — login flow,
 per-command flags, JSON output fields — read `linkai-cli/SKILL.md` from the skill
 archive you installed in step 2.

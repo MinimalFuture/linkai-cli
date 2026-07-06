@@ -33,6 +33,7 @@ This skill is optimized for agent invocation, not interactive human use. Default
 | Workflow | `linkai workflow ...` | [workflow.md](references/workflow.md) |
 | App / Model / Account / Credits | `linkai app/model/account/score ...` | [admin.md](references/admin.md) |
 | Login / auth status | `linkai auth ...` | [auth.md](references/auth.md) |
+| Install / update the CLI | `linkai update` | [install.md](references/install.md) |
 | Exit codes & scope recovery | — | [errors.md](references/errors.md) |
 
 ## Decision flow
