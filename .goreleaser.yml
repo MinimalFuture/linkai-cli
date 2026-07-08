@@ -96,6 +96,10 @@ homebrew_casks:
     description: LinkAI platform CLI
 
 release:
+  # Overwrite assets that already exist on the release instead of failing with a
+  # 422 "already_exists". Makes re-running a release (e.g. after a later step
+  # like the CDN sync failed) idempotent.
+  mode: replace
   footer: |
     ## Install
 
