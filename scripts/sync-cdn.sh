@@ -77,6 +77,20 @@ cos_put() {
   log "uploaded  → ${key}"
 }
 
+# cos_put_if_absent skips the upload when the remote key already exists. Cross-
+# border uploads to COS are slow and a run can time out partway through; on a
+# re-run this lets us upload only the objects still missing instead of re-sending
+# everything (which would time out again). Versioned artifacts are immutable, so
+# skipping an already-present object is always safe.
+cos_put_if_absent() {
+  local src="$1" key="$2"
+  if cos ls "cos://${CDN_BUCKET}/${key}" 2>/dev/null | grep -q "${key##*/}"; then
+    log "exists, skip → ${key}"
+    return 0
+  fi
+  cos_put "$src" "$key"
+}
+
 # Diagnostics: print coscli version + verify the bucket is reachable before
 # uploading, so a failure surfaces a clear cause instead of a bare exit 1.
 log "==> coscli version"
@@ -98,7 +112,10 @@ cos ls "cos://${CDN_BUCKET}/" >/dev/null || {
 log "==> Uploading fixed-path files"
 cos_put "install.sh"      "${PREFIX}/install.sh"
 cos_put "install.ps1"     "${PREFIX}/install.ps1"
-cos_put "$DIST/latest.txt" "${PREFIX}/latest.txt"
+# NOTE: latest.txt is uploaded LAST (after all versioned artifacts) so the
+# version pointer only flips to the new version once every binary is present.
+# Otherwise a partial/timed-out run would advertise a version whose downloads
+# 404, breaking installs.
 # Agent install guide at a fixed URL so it can be shared with an agent directly:
 #   https://<CDN_DOMAIN>/cli/install.md
 cos_put "skills/linkai-cli/references/install.md" "${PREFIX}/install.md"
@@ -114,8 +131,11 @@ cos_put "skills/linkai-cli/references/install.md" "${PREFIX}/install.md"
 log "==> Uploading versioned artifacts (${VERSION})"
 for f in "$DIST"/*.tar.gz "$DIST"/*.zip "$DIST"/checksums.txt; do
   [ -e "$f" ] || continue
-  cos_put "$f" "${PREFIX}/${VERSION}/$(basename "$f")"
+  cos_put_if_absent "$f" "${PREFIX}/${VERSION}/$(basename "$f")"
 done
+
+# All versioned artifacts are now present — flip the version pointer last.
+cos_put "$DIST/latest.txt" "${PREFIX}/latest.txt"
 
 # ── Refresh CDN cache for fixed-path files ────────────────────────────────────
 #
