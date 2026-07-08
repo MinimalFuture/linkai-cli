@@ -22,11 +22,11 @@ LinkAI CLI 核心提供两类能力：**平台资源**（管理和使用在 Link
 
 | 资源 | 命令 | 说明 |
 |------|------|------|
-| 应用 | `app` | 查询 AI 应用列表与配置 |
-| 知识库 | `knowledge` | 向量检索私有知识库，管理文件与知识库 |
-| 数据库 | `database` | 查询业务数据库、表结构，执行 SQL |
-| 工作流 | `workflow` | 运行 LinkAI 上编排好的工作流 |
-| 插件 | `plugin` | 调用平台插件能力 |
+| 应用 | `app` | AI 应用的查询、详情、创建、更新与删除 |
+| 知识库 | `knowledge` | 向量检索私有知识库，导入文件与管理知识库 |
+| 数据库 | `database` | 查询数据库与表结构、执行 SQL、创建内置数据库与数据表 |
+| 工作流 | `workflow` | 运行 LinkAI 上编排好的工作流，支持创建、更新与删除 |
+| 插件 | `plugin` | 查询、查看详情与执行平台插件 |
 | 账户 | `account` | 用户账号信息、积分管理 |
 
 **🧠 AI 模型能力**
@@ -117,11 +117,11 @@ linkai chat "你好" --app <app_code>    # 3. 与应用对话
 | 命令 | 说明 |
 |------|------|
 | `auth login` / `logout` / `status` | 登录 / 登出 / 查看登录状态 |
-| `app list` / `app detail <code>` | 查看应用列表与详情 |
+| `app list` / `detail` / `create` / `update` / `delete` | 应用查看与管理 |
 | `chat "<消息>" --app <code>` | 与应用对话，`--session` 支持多轮 |
-| `knowledge list` / `files` / `search` / `create` / `delete` | 知识库查询与管理 |
-| `database list` / `tables` / `describe` / `exec` | 数据库查询与 SQL 执行 |
-| `workflow list` / `run <code> --input "<文本>"` | 查看与运行工作流 |
+| `knowledge list` / `files` / `search` / `create` / `import` / `delete` | 知识库查询、导入与管理 |
+| `database list` / `tables` / `describe` / `exec` / `create` / `create-table` | 数据库查询、SQL 执行与内置库/表创建 |
+| `workflow list` / `run <code> --input "<文本>"` / `create` / `update` / `delete` | 工作流查看、运行与管理 |
 | `plugin list` / `detail` / `exec <code>` | 查看与执行插件 |
 | `image gen "<描述>"` | 文生图 |
 | `video gen "<描述>"` | 文生视频（内置轮询等待） |

@@ -22,11 +22,11 @@ The CLI exposes two kinds of capabilities: **platform resources** (manage and us
 
 | Resource | Command | Description |
 |----------|---------|-------------|
-| Apps | `app` | List AI apps and inspect their configuration |
-| Knowledge | `knowledge` | Vector-search private knowledge bases; manage files and bases |
-| Database | `database` | Query business databases and schemas, run SQL |
-| Workflow | `workflow` | Run workflows orchestrated on LinkAI |
-| Plugin | `plugin` | Invoke platform plugins |
+| Apps | `app` | List, inspect, create, update, and delete AI apps |
+| Knowledge | `knowledge` | Vector-search private knowledge bases; import files and manage bases |
+| Database | `database` | Query databases and schemas, run SQL, create builtin databases and tables |
+| Workflow | `workflow` | Run workflows orchestrated on LinkAI; create, update, and delete them |
+| Plugin | `plugin` | List, inspect, and run platform plugins |
 | Account | `account` | Account profile, credits, and recharge |
 
 **🧠 Model capabilities**
@@ -117,11 +117,11 @@ A few notes when calling from an agent:
 | Command | Description |
 |---------|-------------|
 | `auth login` / `logout` / `status` | Log in / out / show login status |
-| `app list` / `app detail <code>` | List apps and view details |
+| `app list` / `detail` / `create` / `update` / `delete` | List and manage apps |
 | `chat "<message>" --app <code>` | Chat with an app; `--session` for multi-turn |
-| `knowledge list` / `files` / `search` / `create` / `delete` | Query and manage knowledge bases |
-| `database list` / `tables` / `describe` / `exec` | Query databases and run SQL |
-| `workflow list` / `run <code> --input "<text>"` | List and run workflows |
+| `knowledge list` / `files` / `search` / `create` / `import` / `delete` | Query, import, and manage knowledge bases |
+| `database list` / `tables` / `describe` / `exec` / `create` / `create-table` | Query, run SQL, and create builtin databases/tables |
+| `workflow list` / `run <code> --input "<text>"` / `create` / `update` / `delete` | List, run, and manage workflows |
 | `plugin list` / `detail` / `exec <code>` | List and run plugins |
 | `image gen "<prompt>"` | Text-to-image |
 | `video gen "<prompt>"` | Text-to-video (waits for completion) |
