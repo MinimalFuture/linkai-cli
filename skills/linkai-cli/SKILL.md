@@ -15,7 +15,7 @@ This skill is optimized for agent invocation, not interactive human use. Default
 |---|---|---|
 | Output | append `--json` | machine-parseable |
 | `chat` | non-streaming is automatic when output is piped (agent case); add `--no-stream` to force it | full reply in one block |
-| `score buy` | add `--agent` | returns `qr_base64`, not ASCII QR |
+| `account recharge` | add `--agent` | returns `qr_file` (local PNG path), not ASCII QR |
 | `knowledge delete` | add `--force` | skips confirmation prompt |
 | `auth login` | send the link, then poll on your next tool call (see below) | login needs the user to authorize in a browser |
 | Long async tasks | `video gen` polls internally — just wait | don't re-poll |

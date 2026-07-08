@@ -2,7 +2,6 @@ package score
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -78,7 +77,7 @@ func NewCmdScoreBuy(f *cmdutil.Factory, runF func(*BuyOptions) error) *cobra.Com
 	}
 
 	cmd.Flags().BoolVar(&opts.JSON, "json", false, "output in JSON format (agent mode)")
-	cmd.Flags().BoolVar(&opts.Agent, "agent", false, "agent mode: return QR code URL instead of ASCII QR")
+	cmd.Flags().BoolVar(&opts.Agent, "agent", false, "agent mode: write QR code to a PNG file and return its path instead of an ASCII QR")
 	cmd.Flags().StringVar(&opts.ProductID, "product", "", "product ID (skip interactive selection)")
 	cmd.Flags().StringVar(&opts.PayChannel, "pay", "wechat", "payment channel: wechat or alipay")
 
@@ -209,12 +208,39 @@ func agentOutput(opts *BuyOptions, orderNo, codeURL, productID string) error {
 		"code_url":    codeURL,
 		"status":      "INIT",
 	}
+	// Write the QR code to a local PNG and return its path. A file path is far
+	// easier for an agent to surface to the user (it can render the image) than
+	// a large base64 blob that also bloats the agent's context.
 	if codeURL != "" {
-		if png, err := qrcode.Encode(codeURL, qrcode.Medium, 300); err == nil {
-			result["qr_base64"] = base64.StdEncoding.EncodeToString(png)
+		if path, err := writeQRFile(codeURL, orderNo); err == nil {
+			result["qr_file"] = path
+		} else {
+			fmt.Fprintf(opts.Factory.IOStreams.ErrOut, "warning: could not write QR image: %v\n", err)
 		}
 	}
 	return output.PrintJSON(opts.Factory.IOStreams.Out, result)
+}
+
+// writeQRFile renders codeURL as a QR PNG under ~/.linkai and returns its path.
+func writeQRFile(codeURL, orderNo string) (string, error) {
+	png, err := qrcode.Encode(codeURL, qrcode.Medium, 300)
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(qrDir())
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, fmt.Sprintf("qr-%s.png", orderNo))
+	if err := os.WriteFile(path, png, 0600); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func qrDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".linkai")
 }
 
 func humanFlow(opts *BuyOptions, client *api.Client, orderNo, codeURL string) error {

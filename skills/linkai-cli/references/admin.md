@@ -21,16 +21,18 @@ linkai account info [--json]
 
 Returns `{ name, credits, plan_version, ... }`.
 
-## Credits / Score
+## Credits
 
 | Command | Scope | Agent notes |
 |---|---|---|
-| `linkai score list [--json]` | `score:read` | available credit packages |
-| `linkai score buy --product <id> --pay wechat\|alipay --agent [--json]` | `score:buy` | **always pass `--agent`** to get `qr_base64` instead of ASCII QR |
-| `linkai score order <order_no> [--json]` | `score:read` | poll order status by order number |
-| `linkai score orders [--page <n>] [--page-size <n>] [--json]` | `score:read` | purchase history |
+| `linkai account credits [--json]` | `score:read` | available credit packages |
+| `linkai account recharge --product <id> --pay wechat\|alipay --agent [--json]` | `score:buy` | **always pass `--agent`** — returns `qr_file` (a local PNG path), not an ASCII QR |
+| `linkai account order <order_no> [--json]` | `score:read` | poll order status by order number |
+| `linkai account orders [--page <n>] [--page-size <n>] [--json]` | `score:read` | purchase history |
 
-`score buy` returns the QR; once the user pays, poll `score order <order_no>` until status flips to paid.
+`recharge --agent` writes the payment QR to a local PNG and returns its path as
+`qr_file` (plus `code_url`, the raw pay URL). Show the image to the user; once
+they pay, poll `account order <order_no>` until `status` becomes `PAID`.
 
 ## Auth — agent rules
 
